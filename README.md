@@ -31,7 +31,7 @@ Encrypt and decrypt your own messages on a machine that looks, clicks and lights
 It's plain HTML, CSS and JavaScript. There's no build step and nothing to install.
 
 - **Locally:** download the repo and open `index.html` in any modern browser.
-- **Online with GitHub Pages:** in the repo, go to **Settings → Pages**, set *Source* to **Deploy from a branch**, choose `main` and `/ (root)`, then save. The site will be live at `https://blop77.github.io/enigma/`.
+- **Online with GitHub Pages:** in the repo, go to **Settings → Pages**, set *Source* to **Deploy from a branch**, choose `main` and `/ (root)`, then save. The site will be live at `https://blop77.github.io/Enigma/`.
 
 ## How to use it
 
