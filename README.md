@@ -3,9 +3,13 @@
 An interactive, historically accurate simulator of the German **Enigma** cipher machine used in WWII.
 Encrypt and decrypt your own messages on a machine that looks, clicks and lights up like the real one.
 
+### ▶ [Live demo: blop77.github.io/Enigma](https://blop77.github.io/Enigma/)
+
+[![Live demo](https://img.shields.io/badge/live%20demo-open%20the%20simulator-d1ab5c?style=for-the-badge)](https://blop77.github.io/Enigma/)
+
 ![Enigma](https://img.shields.io/badge/Enigma-I%20%2F%20M3-c9a356) ![No build step](https://img.shields.io/badge/build-none-555) ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
 
-![Screenshot of the simulator decrypting a real 1941 message](screenshot.png)
+[![Screenshot of the simulator decrypting a real 1941 message](screenshot.png)](https://blop77.github.io/Enigma/)
 
 ## Features
 
@@ -30,8 +34,8 @@ Encrypt and decrypt your own messages on a machine that looks, clicks and lights
 
 It's plain HTML, CSS and JavaScript. There's no build step and nothing to install.
 
+- **Online:** open the live demo at **https://blop77.github.io/Enigma/**. It is hosted on GitHub Pages and redeploys automatically whenever `main` changes.
 - **Locally:** download the repo and open `index.html` in any modern browser.
-- **Online with GitHub Pages:** in the repo, go to **Settings → Pages**, set *Source* to **Deploy from a branch**, choose `main` and `/ (root)`, then save. The site will be live at `https://blop77.github.io/Enigma/`.
 
 ## How to use it
 
