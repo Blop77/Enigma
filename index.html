@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Enigma Machine Simulator</title>
+  <meta name="description" content="A historically accurate, interactive Enigma I / M3 cipher machine simulator. Encrypt and decrypt messages with real rotors, reflectors and plugboard — with mechanical sounds.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2321201c'/%3E%3Ccircle cx='32' cy='32' r='20' fill='%23ffd76a'/%3E%3Ctext x='32' y='41' text-anchor='middle' font-family='Georgia' font-weight='bold' font-size='26' fill='%2321201c'%3EE%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Special+Elite&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-plate" aria-hidden="true">E</div>
+    <div>
+      <h1>Enigma Machine Simulator</h1>
+      <p class="tagline">Encrypt &amp; decrypt messages exactly like it was done in 1940</p>
+    </div>
+  </div>
+  <div class="top-actions">
+    <button class="btn btn-ghost" id="btn-guide" type="button" title="Open the step-by-step guide">
+      <span aria-hidden="true">?</span> How to use
+    </button>
+    <div class="sound-control">
+      <button class="btn btn-ghost icon-btn" id="btn-sound" type="button" aria-pressed="true" title="Sound on / off">
+        <svg class="ico-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <svg class="ico-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 9.5l5 5m0-5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <span class="sr-only">Sound</span>
+      </button>
+      <input type="range" id="volume" min="0" max="100" value="70" aria-label="Volume">
+    </div>
+  </div>
+</header>
+
+<div class="welcome" id="welcome" hidden>
+  <p><strong>New here?</strong> Click the keys below (or type on your keyboard) to encrypt letter-by-letter, or paste a whole message in the <em>Message</em> panel. To decrypt, use the <em>same settings</em> the sender used.</p>
+  <div class="welcome-actions">
+    <button class="btn btn-primary btn-sm" id="welcome-guide" type="button">Read the 1-minute guide</button>
+    <button class="btn btn-ghost btn-sm" id="welcome-close" type="button">Got it</button>
+  </div>
+</div>
+
+<main class="layout">
+
+  <!-- ===================== THE MACHINE ===================== -->
+  <section class="machine-wrap" aria-label="Enigma machine">
+    <div class="case">
+      <span class="screw tl"></span><span class="screw tr"></span><span class="screw bl"></span><span class="screw br"></span>
+
+      <div class="panel">
+        <!-- Rotor bay -->
+        <div class="rotor-bay">
+          <div class="ukw-plate" title="Reflector (Umkehrwalze) — sends the signal back through the rotors">
+            <span class="plate-label">UKW</span>
+            <span class="plate-value" id="ukw-label">B</span>
+          </div>
+
+          <div class="rotors" id="rotors"><!-- built by app.js --></div>
+
+          <div class="bay-actions">
+            <button class="btn btn-metal" id="btn-reset" type="button" title="Turn the rotors back to the start position and clear the tape">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v5h5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Reset
+            </button>
+            <div class="pos-status" id="pos-status" aria-live="polite"></div>
+          </div>
+        </div>
+
+        <!-- Lampboard -->
+        <div class="board-label"><span>Lampboard</span><small>shows the encrypted letter</small></div>
+        <div class="lampboard" id="lampboard" aria-hidden="true"></div>
+
+        <!-- Keyboard -->
+        <div class="board-label"><span>Keyboard</span><small>click a key or type on your own keyboard</small></div>
+        <div class="keyboard" id="keyboard" role="group" aria-label="Enigma keyboard"></div>
+      </div>
+
+      <!-- Plugboard -->
+      <div class="plugboard-panel">
+        <div class="board-label plug-label">
+          <span>Plugboard <em>(Steckerbrett)</em></span>
+          <small id="plug-hint">Click two letters to connect them with a cable · click a plugged letter to remove its cable</small>
+        </div>
+        <div class="plugboard" id="plugboard">
+          <svg class="cables" id="cables" aria-hidden="true"></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live tape -->
+    <section class="card tape-card" aria-labelledby="tape-title">
+      <div class="card-head">
+        <h2 id="tape-title">Tape <small>— what you typed on the machine</small></h2>
+        <div class="card-head-actions">
+          <button class="btn btn-ghost btn-sm" id="btn-copy-tape" type="button">Copy output</button>
+          <button class="btn btn-ghost btn-sm" id="btn-clear-tape" type="button">Clear</button>
+        </div>
+      </div>
+      <div class="tape">
+        <div class="tape-row"><span class="tape-tag">IN</span><output id="tape-in" class="tape-text" aria-label="Typed letters"></output></div>
+        <div class="tape-row"><span class="tape-tag out">OUT</span><output id="tape-out" class="tape-text" aria-live="polite" aria-label="Lamp letters"></output></div>
+      </div>
+    </section>
+
+    <!-- Signal path -->
+    <section class="card trace-card" aria-labelledby="trace-title">
+      <div class="card-head">
+        <h2 id="trace-title">Signal path <small>— how the last key became its lamp</small></h2>
+      </div>
+      <ol class="trace" id="trace">
+        <li class="trace-empty">Press any key to watch the electrical current travel through the machine.</li>
+      </ol>
+    </section>
+  </section>
+
+  <!-- ===================== SIDE PANEL ===================== -->
+  <aside class="side">
+
+    <!-- Message -->
+    <section class="card msg-card" aria-labelledby="msg-title">
+      <div class="card-head">
+        <h2 id="msg-title">Message</h2>
+        <button class="btn btn-link btn-sm" id="btn-example" type="button" title="Load a genuine German Army message from 1941">📜 Try a real 1941 message</button>
+      </div>
+
+      <div class="mode-tabs" role="tablist" aria-label="Mode">
+        <button role="tab" class="mode-tab" id="tab-encrypt" aria-selected="true" type="button">
+          <span class="tab-ico" aria-hidden="true">🔒</span> Encrypt
+        </button>
+        <button role="tab" class="mode-tab" id="tab-decrypt" aria-selected="false" type="button">
+          <span class="tab-ico" aria-hidden="true">🔓</span> Decrypt
+        </button>
+      </div>
+
+      <ol class="steps" id="mode-steps"></ol>
+
+      <label class="field-label" for="msg-in" id="msg-in-label">Your message (plaintext)</label>
+      <textarea id="msg-in" rows="4" spellcheck="false" placeholder="Type or paste the message you want to encrypt…"></textarea>
+      <div class="field-note" id="msg-note"></div>
+
+      <div class="options-row stack">
+        <label class="field-label small" for="fmt">Spaces &amp; punctuation</label>
+        <select id="fmt"></select>
+      </div>
+      <div class="options-row">
+        <label class="switch">
+          <input type="checkbox" id="animate">
+          <span class="switch-track" aria-hidden="true"></span>
+          Animate on the machine
+        </label>
+        <label class="speed" id="speed-wrap">
+          <span>Speed</span>
+          <input type="range" id="speed" min="1" max="10" value="6" aria-label="Animation speed">
+        </label>
+      </div>
+
+      <div class="action-row">
+        <button class="btn btn-primary btn-lg" id="btn-run" type="button">Encrypt message</button>
+        <button class="btn btn-ghost" id="btn-clear-msg" type="button">Clear</button>
+      </div>
+
+      <div class="out-head">
+        <label class="field-label" for="msg-out" id="msg-out-label">Encrypted message (ciphertext)</label>
+        <div class="out-actions">
+          <button class="btn btn-ghost btn-sm" id="btn-copy-out" type="button" disabled>Copy</button>
+          <button class="btn btn-ghost btn-sm" id="btn-swap" type="button" disabled title="Move the result into the input box and switch mode">⇅ <span id="swap-text">Decrypt this</span></button>
+        </div>
+      </div>
+      <textarea id="msg-out" rows="4" readonly placeholder="The result will appear here."></textarea>
+      <div class="example-note" id="example-note" hidden></div>
+    </section>
+
+    <!-- Settings / key -->
+    <section class="card settings-card" aria-labelledby="settings-title">
+      <div class="card-head">
+        <h2 id="settings-title">Machine settings <small>— the secret key</small></h2>
+      </div>
+      <p class="card-intro">Sender and receiver must use <strong>identical</strong> settings. Share them with the <em>Copy key</em> button.</p>
+
+      <fieldset id="settings-fieldset">
+        <div class="grid-2">
+          <div>
+            <label class="field-label small" for="model">Model</label>
+            <select id="model">
+              <option value="I">Enigma I — Army &amp; Air Force (rotors I–V)</option>
+              <option value="M3">Enigma M3 — Navy (rotors I–VIII)</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label small" for="reflector">Reflector (UKW)</label>
+            <select id="reflector"></select>
+          </div>
+        </div>
+
+        <table class="rotor-table">
+          <thead>
+            <tr>
+              <th scope="col"></th>
+              <th scope="col">Rotor <span class="tip" title="Which rotor (Walze) sits in each slot. Each rotor may only be used once.">ⓘ</span></th>
+              <th scope="col">Ring <span class="tip" title="Ring setting (Ringstellung): rotates the wiring relative to the letters on the rotor.">ⓘ</span></th>
+              <th scope="col">Start <span class="tip" title="Start position (Grundstellung): the letter shown in the window before you begin typing.">ⓘ</span></th>
+            </tr>
+          </thead>
+          <tbody id="rotor-rows"></tbody>
+        </table>
+
+        <label class="field-label small" for="plugs">Plugboard pairs <span class="plug-count" id="plug-count"></span></label>
+        <input type="text" id="plugs" autocomplete="off" spellcheck="false" placeholder="e.g. AB CD EF  (or click the sockets on the machine)">
+        <div class="field-error" id="plugs-error" role="alert"></div>
+
+        <label class="switch small-switch">
+          <input type="checkbox" id="numbers">
+          <span class="switch-track" aria-hidden="true"></span>
+          Show rotor positions as numbers 01–26 (like the real Enigma I)
+        </label>
+      </fieldset>
+
+      <div class="key-actions">
+        <button class="btn btn-ghost btn-sm" id="btn-random" type="button">🎲 Random key</button>
+        <button class="btn btn-ghost btn-sm" id="btn-copy-key" type="button">📋 Copy key</button>
+        <button class="btn btn-ghost btn-sm" id="btn-load-key" type="button">📥 Load key</button>
+        <button class="btn btn-ghost btn-sm" id="btn-default-key" type="button">↺ Defaults</button>
+      </div>
+      <div class="key-preview" id="key-preview" title="Your current key in text form"></div>
+    </section>
+  </aside>
+</main>
+
+<footer class="footer">
+  <p>Simulates the Wehrmacht Enigma I and Kriegsmarine M3 with authentic rotor wirings, ring settings, reflectors, plugboard and double-stepping.
+  Built for learning — <a href="https://github.com/blop77/enigma" target="_blank" rel="noopener">source on GitHub</a>.</p>
+</footer>
+
+<!-- Load key dialog -->
+<dialog id="load-dialog" class="dialog">
+  <form method="dialog" class="dialog-body">
+    <h2>Load a key</h2>
+    <p>Paste a key that someone shared with you (from their <em>Copy key</em> button):</p>
+    <textarea id="load-text" rows="3" spellcheck="false" placeholder="UKW-B | Rotors I II III | Rings 01 01 01 | Start AAA | Plugs AB CD"></textarea>
+    <div class="field-error" id="load-error" role="alert"></div>
+    <div class="dialog-actions">
+      <button class="btn btn-ghost" value="cancel" type="submit">Cancel</button>
+      <button class="btn btn-primary" id="load-apply" value="default" type="button">Apply key</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Guide dialog -->
+<dialog id="guide" class="dialog guide">
+  <div class="dialog-body">
+    <button class="dialog-x" id="guide-close" type="button" aria-label="Close guide">×</button>
+    <h2>How to use the Enigma simulator</h2>
+
+    <div class="guide-grid">
+      <div class="guide-step">
+        <div class="num">1</div>
+        <h3>Agree on a key</h3>
+        <p>Both people choose the same <strong>Machine settings</strong>: rotors, ring settings, start positions, reflector and plugboard. Use <em>🎲 Random key</em>, then <em>📋 Copy key</em> and send it to your friend.</p>
+      </div>
+      <div class="guide-step">
+        <div class="num">2</div>
+        <h3>Encrypt</h3>
+        <p>Pick the <strong>🔒 Encrypt</strong> tab, type your message and press <em>Encrypt message</em>. Copy the scrambled result and send it.</p>
+      </div>
+      <div class="guide-step">
+        <div class="num">3</div>
+        <h3>Decrypt</h3>
+        <p>Your friend loads the same key (<em>📥 Load key</em>), picks <strong>🔓 Decrypt</strong>, pastes the ciphertext and presses <em>Decrypt message</em>. The original text appears!</p>
+      </div>
+    </div>
+
+    <h3>Two ways to use it</h3>
+    <ul>
+      <li><strong>Like a real operator:</strong> click the round keys (or type on your keyboard). Each key lights a lamp — that's the encrypted letter. The rotors click forward after every key. Letters collect on the <em>Tape</em>.</li>
+      <li><strong>The quick way:</strong> paste a whole message in the <em>Message</em> panel. Tick <em>Animate on the machine</em> to watch it being typed.</li>
+    </ul>
+
+    <h3>Why decrypting works</h3>
+    <p>Enigma is <em>reciprocal</em>: if A becomes Q at some position, then Q becomes A at the same position. So decrypting is just encrypting the ciphertext again from the <strong>same start position</strong>. The simulator always starts a message from the start position set in <em>Machine settings</em>, so you never have to reset by hand.</p>
+
+    <h3>Parts of the machine</h3>
+    <dl class="parts">
+      <dt>Rotors (Walzen)</dt><dd>Three wired wheels that scramble the alphabet. The right rotor steps on every key press; it pushes the middle one forward once per turn, which in turn pushes the left one. Turn them by hand with the ▲ ▼ buttons, the mouse wheel or arrow keys.</dd>
+      <dt>Ring setting (Ringstellung)</dt><dd>Shifts each rotor's internal wiring relative to its letters — another part of the secret key.</dd>
+      <dt>Reflector (Umkehrwalze, UKW)</dt><dd>Sends the current back through the rotors by a different route. This is why a letter can <em>never</em> encrypt to itself — the flaw that helped Alan Turing and the codebreakers at Bletchley Park crack Enigma.</dd>
+      <dt>Plugboard (Steckerbrett)</dt><dd>Cables that swap pairs of letters before and after the rotors. Historically 10 cables were used, adding about 150 trillion possibilities.</dd>
+    </dl>
+
+    <h3>Good to know</h3>
+    <ul>
+      <li>Only the 26 letters are encrypted. Digits and punctuation pass through unchanged (or are dropped in the authentic formats) — real operators spelled numbers out.</li>
+      <li>Operators wrote ciphertext in <em>groups of five</em> letters and used <strong>X</strong> for spaces. Choose those under <em>Spaces &amp; punctuation</em> for the authentic look.</li>
+      <li>Keyboard shortcuts: letters <kbd>A</kbd>–<kbd>Z</kbd> press machine keys (when you're not typing in a text box), <kbd>Esc</kbd> cancels a half-made plug connection.</li>
+    </ul>
+    <div class="dialog-actions">
+      <button class="btn btn-primary" id="guide-ok" type="button">Start using Enigma</button>
+    </div>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="js/enigma.js"></script>
+<script src="js/sound.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
