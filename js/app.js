@@ -456,7 +456,7 @@
 
     const refl = $('reflector');
     refl.innerHTML = model.reflectors.map((r) =>
-      '<option value="' + r + '">UKW-' + r + (r === 'B' ? ' (standard)' : r === 'A' ? ' (pre-war)' : '') + '</option>').join('');
+      '<option value="' + r + '">UKW-' + r + (r === 'B' ? ' · standard' : '') + '</option>').join('');
     refl.value = state.reflector;
     $('ukw-label').textContent = state.reflector;
 

@@ -5,6 +5,8 @@ Encrypt and decrypt your own messages on a machine that looks, clicks and lights
 
 ![Enigma](https://img.shields.io/badge/Enigma-I%20%2F%20M3-c9a356) ![No build step](https://img.shields.io/badge/build-none-555) ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
 
+![Screenshot of the simulator decrypting a real 1941 message](screenshot.png)
+
 ## Features
 
 - **Looks like the real machine:** wooden case, rotor windows with thumbwheels, glowing lampboard, round keys in the German QWERTZ layout, and a plugboard with coloured cables.
