@@ -1,5 +1,7 @@
 # Enigma Machine Simulator
 
+> 🚇 **Also in this repo:** [MetroMitra](metro-mitra/), our Pune Metro hackathon project, a door-to-door metro journey planner.
+
 An interactive, historically accurate simulator of the German **Enigma** cipher machine used in WWII.
 Encrypt and decrypt your own messages on a machine that looks, clicks and lights up like the real one.
 
