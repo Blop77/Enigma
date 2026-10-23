@@ -1,78 +1,81 @@
-# Enigma Machine Simulator
+# MetroMitra · मेट्रोमित्र
 
-> 🚇 **Also in this repo:** [MetroMitra](metro-mitra/), our Pune Metro hackathon project, a door-to-door metro journey planner.
+**Your door-to-door Pune Metro companion.** Built for the Pune Metro hackathon, theme **Urban mobility**.
 
-An interactive, historically accurate simulator of the German **Enigma** cipher machine used in WWII.
-Encrypt and decrypt your own messages on a machine that looks, clicks and lights up like the real one.
+### ▶ [Live demo: blop77.github.io/metro-mitra](https://blop77.github.io/metro-mitra/)
 
-### ▶ [Live demo: blop77.github.io/Enigma](https://blop77.github.io/Enigma/)
+![Urban mobility](https://img.shields.io/badge/theme-urban%20mobility-8e3fa8) ![No build step](https://img.shields.io/badge/build-none-555) ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
 
-[![Live demo](https://img.shields.io/badge/live%20demo-open%20the%20simulator-d1ab5c?style=for-the-badge)](https://blop77.github.io/Enigma/)
+[![MetroMitra planning a trip from MIT-WPU to Pune Airport](screenshot.png)](https://blop77.github.io/metro-mitra/)
 
-![Enigma](https://img.shields.io/badge/Enigma-I%20%2F%20M3-c9a356) ![No build step](https://img.shields.io/badge/build-none-555) ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
+## The problem
 
-[![Screenshot of the simulator decrypting a real 1941 message](screenshot.png)](https://blop77.github.io/Enigma/)
+Pune Metro now runs two lines, but most people still don't use it for everyday trips. People don't avoid it because the metro is slow. They avoid it because the trip is hard to plan:
 
-## Features
+- *Which* station is nearest to my college/office, and is it on the line I need?
+- Do I have to change at Civil Court? Which platform, which direction?
+- How much does the **whole** trip cost once I add the auto to and from the station?
+- Is it actually better than just taking an auto?
 
-- **Looks like the real machine:** wooden case, rotor windows with thumbwheels, glowing lampboard, round keys in the German QWERTZ layout, and a plugboard with coloured cables.
-- **Mechanical sounds:** key clacks, rotor ratchet clicks (you can hear the double step), thumbwheel ticks and plugs going in. All sounds are made live with the Web Audio API, with mute and volume controls.
-- **Encrypt and decrypt:** separate tabs with step-by-step instructions. Paste a whole message, or type it letter by letter on the machine.
-- **Animate on the machine:** watch a whole message being typed, with keys going down, lamps lighting up and rotors turning.
-- **Accurate cipher:**
-  - Rotors I–VIII with their real wirings and turnover notches
-  - Reflectors UKW-A, UKW-B and UKW-C
-  - Ring settings (*Ringstellung*) and start positions (*Grundstellung*)
-  - Plugboard (*Steckerbrett*) with up to 13 cables
-  - The middle rotor's "double-stepping" quirk
-- **Signal path view:** shows how the current runs through the plugboard, the three rotors, the reflector and back to a lamp.
-- **Shareable keys:** use *Copy key* / *Load key* to send your settings to a friend as one line of text:
-  `Enigma I | UKW-B | Rotors I II III | Rings 01 01 01 | Start AAA | Plugs AB CD`
-- **A real 1941 message:** one click loads a genuine German Army message from Operation Barbarossa and its key, ready for you to decrypt.
-- **Authentic output formats:** groups of five letters, with X in place of spaces, just like real operators wrote them.
-- Works on desktop and mobile, supports your physical keyboard, and remembers your settings between visits.
+Google Maps answers some of this, but it doesn't put the metro next to the road options in rupees, minutes and CO₂, and it doesn't tell you plainly when the metro is the *wrong* choice.
 
-## How to run it
+## What MetroMitra does
 
-It's plain HTML, CSS and JavaScript. There's no build step and nothing to install.
+Type where you are and where you're going: a station, a college, a landmark, or 📍 your GPS location. You get:
 
-- **Online:** open the live demo at **https://blop77.github.io/Enigma/**. It is hosted on GitHub Pages and redeploys automatically whenever `main` changes.
-- **Locally:** download the repo and open `index.html` in any modern browser.
+1. **A door-to-door plan:** first mile (walk / auto / cycle) → board the right line in the right direction → change at Civil Court if needed → last mile, with clock times for every step.
+2. **The real total cost:** metro fare plus first and last mile, not just the ticket.
+3. **An honest verdict:** "Metro wins: ₹155 cheaper and 2 min faster than an auto", or "For this trip an auto is the better deal".
+4. **A side-by-side comparison:** metro vs auto vs cab, by time, cost and CO₂.
+5. **Live service status:** running, peak/off-peak frequency, closed, or "opens in 20 min".
+6. **An interactive network map:** tap two stations to plan; the route and first/last mile are drawn on it.
+7. **Shareable trip links:** send a friend `…#from=MIT-WPU&to=Pune Airport`.
 
-## How to use it
+It tries up to 3 stations near each end of the trip (9 combinations) and picks the fastest door to door. So it will happily tell you to walk 10 minutes to a different station if that skips an interchange.
 
-1. **Agree on a key.** Both people set the same *Machine settings*: rotors, rings, start position, reflector and plugboard. *🎲 Random key* followed by *📋 Copy key* is the easiest way.
-2. **Encrypt.** On the 🔒 Encrypt tab, type your message and press **Encrypt message**. Send the result.
-3. **Decrypt.** The receiver loads the same key (*📥 Load key*), opens the 🔓 Decrypt tab, pastes the ciphertext and presses **Decrypt message**.
-
-Enigma is *reciprocal*: running the ciphertext through a machine with the same settings gives back the plaintext. Every message starts from the configured start position, so encrypting and decrypting always line up.
-
-**Tip:** before you type anything, turning the rotor thumbwheels also sets the start position. After you've typed, press **Reset** to return to it.
-
-## Project structure
+## How it works
 
 ```
-index.html            page layout and the guide
-css/style.css         all styling (the machine is pure CSS, no images)
-js/enigma.js          the cipher engine (works in browser and Node.js)
-js/sound.js           synthesised mechanical sound effects
-js/app.js             user interface: keys, lamps, rotors, plugboard, messages
-tests/enigma.test.js  engine tests against known historical values
+js/data.js       Network (29 stations, 2 lines), 28 landmarks, every tunable number
+js/planner.js    Engine: Dijkstra routing, fares, first/last mile, comparison (no DOM; runs in Node)
+js/app.js        UI: form, results timeline, SVG map, GPS, share links
+tests/           node tests/planner.test.js
 ```
 
-## Tests
+- **Routing:** the graph has one node per *(line, station)*, so changing lines at Civil Court costs real time (platform walk + half a headway of waiting). Dijkstra finds the fastest route.
+- **Distances:** straight-line gaps between station coordinates, scaled so each line adds up to its published length (Purple 17.4 km, Aqua 15.7 km).
+- **Fares:** distance slabs ₹10–₹35. Autos: Pune RTA-style meter (minimum fare for the first 1.5 km, then per km). Road distance ≈ 1.3 × straight line, and traffic is slower in peak hours.
+
+> ⚠️ **All fares, timings, coordinates and tariffs are estimates** kept in `js/data.js`. Check them against the official Maha-Metro fare chart and timetable before the demo. Fixing a number means editing one line there.
+
+## Run it
+
+No build step, nothing to install.
+
+- **Online:** [blop77.github.io/metro-mitra](https://blop77.github.io/metro-mitra/), hosted on GitHub Pages and redeployed whenever `main` changes.
+- **Locally:** open `index.html` in a browser, or:
 
 ```bash
-node tests/enigma.test.js
+npx serve .            # GPS needs http(s), not file://
+node tests/planner.test.js
 ```
 
-The tests check the engine against reference values: `AAAAA → BDZGO`, the `ADU → ADV → AEW → BFX` double step, the two-notch rotors VI–VIII, and the full decryption of the 1941 Barbarossa message.
+## Hackathon plan: what to build next (Codex sprint)
 
-## How Enigma works (short version)
+The core (data → engine → UI) works end to end and has tests. Each item below is self-contained, so it makes a good prompt for Codex, or for us if the credits fall through:
 
-Pressing a key sends current through the **plugboard** (which swaps letter pairs), then right to left through three **rotors** (each one scrambles the alphabet). The **reflector** then sends it back through the rotors by a different path, and through the plugboard again to light a **lamp**. Before each key press the right rotor steps, and now and then it carries the middle and left rotors along, so the scramble changes with every letter.
+| # | Feature | Why judges care | Size |
+|---|---|---|---|
+| 1 | **Verify data:** official fare chart, real station coordinates, first/last train times | Accuracy | S |
+| 2 | **Marathi / Hindi UI** (station names + labels; `data.js` already has a single place for names) | Inclusion | S |
+| 3 | **Crowd reports:** "how crowded is the train / is the lift working?" tap-to-report, shown on the map | Civic, community | M |
+| 4 | **PMPML feeder buses** as a first/last-mile option (Pune open-data GTFS) | Real last-mile fix | M |
+| 5 | **Offline PWA:** installable, works underground with no signal | Practical | S |
+| 6 | **Line 3 (Hinjewadi–Shivajinagar)**: add stations to `LINES` when it opens; the engine needs no changes | Future-proof | S |
+| 7 | **Monthly savings tracker:** "you saved ₹2,400 and 18 kg CO₂ this month by taking the metro" | Engagement | M |
+| 8 | **Accessibility mode:** lift/escalator-only routes, larger text | Inclusion | M |
 
-Because of the reflector, a letter can never be encrypted as itself. That was a weakness that helped Alan Turing and the codebreakers at Bletchley Park break Enigma.
+**Demo script (2 min):** MIT-WPU → Airport (metro wins, ₹155 saved) → Hinjewadi → Koregaon Park in cycle mode (honest trade-off) → Fergusson College → Shaniwar Wada, where the app says *take an auto*. That honesty is the pitch.
 
 ## License
 

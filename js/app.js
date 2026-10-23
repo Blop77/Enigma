@@ -1,1064 +1,428 @@
 /*
- * app.js — user interface for the Enigma simulator.
- * Depends on enigma.js (cipher engine) and sound.js (sound effects).
+ * app.js — MetroMitra user interface.
+ * Depends on data.js (network + assumptions) and planner.js (engine).
  */
 (function () {
   'use strict';
 
+  const { STATIONS, LINES, LANDMARKS, CONFIG } = MetroData;
+  const P = MetroPlanner;
+  const STORE_KEY = 'metromitra-v1';
+  const MY_LOCATION = '📍 My location';
+  const MILE_ICON = { walk: '🚶', auto: '🛺', cycle: '🚲' };
+  const MILE_VERB = { walk: 'Walk', auto: 'Auto', cycle: 'Cycle' };
+
+  const $ = (sel) => document.querySelector(sel);
+  const form = $('#plan-form'), fromIn = $('#from'), toIn = $('#to'), whenIn = $('#when');
+  const errorEl = $('#error'), resultsEl = $('#results'), mapEl = $('#map');
+
+  let myLocation = null;     // { lat, lng } once the user shares GPS
+  let pickNext = 'from';     // which field a tap on the map fills
+
   /* ------------------------------------------------------------------
-   * Constants
+   * Places: stations + landmarks, resolved from free text
    * ------------------------------------------------------------------ */
-  const A = Enigma.ALPHABET;
-  const ROWS = ['QWERTZUIO', 'ASDFGHJK', 'PYXCVBNML']; // real German Enigma layout
-  const ALL_ROTORS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
-  const MODELS = {
-    I:  { rotors: ['I', 'II', 'III', 'IV', 'V'], reflectors: ['A', 'B', 'C'] },
-    M3: { rotors: ALL_ROTORS,                    reflectors: ['B', 'C'] }
-  };
-  const SLOTS = ['Left', 'Middle', 'Right'];
-  const SLOT_HINT = ['slow', '', 'fast'];
-  const CABLE_COLORS = ['#e2584a', '#eba13a', '#e6d24e', '#69c467', '#43b9b1', '#4c8ee6',
-                        '#9d6be3', '#e66bbb', '#c98a5a', '#a6d84a', '#59d2e3', '#f29a8c', '#d6d6d6'];
-  const STORE_KEY = 'enigma-simulator-v1';
-  const MAX_PLUGS = 13;
+  const PLACES = [];
+  Object.keys(STATIONS).forEach((id) => {
+    const lines = P.linesAt(id).map((l) => LINES[l].name).join(' + ');
+    PLACES.push({ label: STATIONS[id][0], hint: 'Metro · ' + lines, place: { stationId: id } });
+  });
+  LANDMARKS.forEach(([name, lat, lng]) => {
+    PLACES.push({ label: name, hint: 'Place', place: { name, lat, lng } });
+  });
 
-  const DEFAULTS = {
-    model: 'I', reflector: 'B', rotors: ['I', 'II', 'III'], rings: [0, 0, 0], start: [0, 0, 0], plugs: [],
-    numbers: false, mode: 'encrypt', fmt: 'keep', animate: false, speed: 6,
-    muted: false, volume: 70, welcomed: false
-  };
+  function fillDatalist() {
+    const dl = $('#places');
+    PLACES.forEach((p) => {
+      const o = document.createElement('option');
+      o.value = p.label;
+      o.label = p.hint;
+      dl.appendChild(o);
+    });
+  }
 
-  const MODE_TEXT = {
-    encrypt: {
-      inLabel: 'Your message (plaintext)',
-      placeholder: 'Type or paste the message you want to encrypt…',
-      outLabel: 'Encrypted message (ciphertext)',
-      run: 'Encrypt message',
-      swap: 'Decrypt this',
-      steps: [
-        'Check the <strong>Machine settings</strong> below — they are your secret key.',
-        'Type your message and press <strong>Encrypt message</strong>.',
-        'Send the ciphertext, and give the receiver the key (<strong>📋 Copy key</strong>).'
-      ],
-      fmts: [
-        ['keep', 'Keep spaces & punctuation (easiest)'],
-        ['groups', 'Letters only, in groups of five (authentic)'],
-        ['x', 'Spaces become X, in groups of five (authentic)']
-      ]
-    },
-    decrypt: {
-      inLabel: 'Received ciphertext',
-      placeholder: 'Paste the encrypted message you received…',
-      outLabel: 'Decrypted message (plaintext)',
-      run: 'Decrypt message',
-      swap: 'Encrypt this',
-      steps: [
-        'Set <strong>exactly the same key</strong> the sender used (<strong>📥 Load key</strong>).',
-        'Paste the ciphertext and press <strong>Decrypt message</strong>.',
-        'Pick the same <strong>Spaces & punctuation</strong> option the sender used.'
-      ],
-      fmts: [
-        ['keep', 'Keep spaces & punctuation'],
-        ['groups', 'Letters only (ignore the spaces between groups)'],
-        ['x', 'Letters only, and turn X back into spaces']
-      ]
+  function resolve(text) {
+    const q = text.trim().toLowerCase();
+    if (!q) return null;
+    if (text.trim() === MY_LOCATION && myLocation) return { name: 'My location', lat: myLocation.lat, lng: myLocation.lng };
+    const exact = PLACES.find((p) => p.label.toLowerCase() === q);
+    if (exact) return exact.place;
+    const partial = PLACES.filter((p) => p.label.toLowerCase().includes(q));
+    return partial.length === 1 ? partial[0].place : null;
+  }
+
+  function placeName(place) {
+    return place.stationId ? STATIONS[place.stationId][0] : place.name;
+  }
+
+  /* ------------------------------------------------------------------
+   * Formatting
+   * ------------------------------------------------------------------ */
+  function fmtMin(m) {
+    m = Math.max(1, Math.round(m));
+    if (m < 60) return m + ' min';
+    return Math.floor(m / 60) + ' h ' + String(m % 60).padStart(2, '0') + ' min';
+  }
+  const fmtRs = (n) => '₹' + Math.round(n);
+  const fmtKm = (n) => (n < 10 ? n.toFixed(1) : Math.round(n)) + ' km';
+  const fmtCo2 = (g) => (g >= 1000 ? (g / 1000).toFixed(1) + ' kg' : Math.round(g) + ' g');
+  function clock(date, plusMin) {
+    const d = new Date(date.getTime() + plusMin * 60000);
+    return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+  const stName = (id) => STATIONS[id][0];
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  function departure() {
+    const d = new Date();
+    if (whenIn.value) {
+      const [h, m] = whenIn.value.split(':').map(Number);
+      d.setHours(h, m, 0, 0);
     }
-  };
-
-  // A genuine message sent by the German Army on 7 July 1941.
-  const EXAMPLE = {
-    key: { model: 'I', reflector: 'B', rotors: ['II', 'IV', 'V'], rings: [1, 20, 11], start: [1, 11, 0],
-           plugs: ['AV', 'BS', 'CG', 'DL', 'FU', 'HZ', 'IN', 'KM', 'OW', 'RX'] },
-    cipher: 'EDPUD NRGYS ZRCXN UYTPO MRMBO FKTBZ REZKM LXLVE FGUEY SIOZV EQMIK UBPMM YLKLT TDEIS ' +
-            'MDICA GYKUA CTCDO MOHWX MUUIA UBSTS LRNBZ SZWNR FXWFY SSXJZ VIJHI DISHP RKLKA YUPAD ' +
-            'TXQSP INQMA TLPIF SVKDA SCTAC DPBOP VHJK',
-    before: '<b>A genuine German Army message from 7 July 1941</b> (Operation Barbarossa). ' +
-            'Its key is already set on the machine — just press <b>Decrypt message</b>.',
-    after: '<b>Decrypted!</b> It is German, with X used as a space. Roughly: <em>“Reconnaissance division ' +
-           'from Kurtinowa, north-west of Sebez, on the flight corridor towards Dubrowki and Opotschka. ' +
-           'Formed up at 18:30. Attack. Infantry regiment.”</em>'
-  };
-
-  /* ------------------------------------------------------------------
-   * State
-   * ------------------------------------------------------------------ */
-  const $ = (id) => document.getElementById(id);
-  const mod = (n, m) => ((n % m) + m) % m;
-  const pad2 = (n) => String(n + 1).padStart(2, '0');
-
-  let state = loadState();
-  let machine = null;
-  let tape = { in: '', out: '' };
-  let typedSinceReset = false; // has the machine moved since the start position?
-  let held = null;             // the key currently held down: { letter, out, source }
-  let plugSel = null;          // first socket of a cable being connected
-  let busy = false;            // an animated message is running
-  let cancelRun = false;
-  let exampleActive = false;
-  const wheelY = [0, 0, 0];
-  const rotorEls = [];
-  const keyEls = {};
-  const lampEls = {};
-  const socketEls = {};
-
-  /* ------------------------------------------------------------------
-   * Persistence
-   * ------------------------------------------------------------------ */
-  function loadState() {
-    let saved = {};
-    try { saved = JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch (e) { saved = {}; }
-    const s = Object.assign({}, DEFAULTS, saved);
-    if (!validKey(s)) Object.assign(s, pickKey(DEFAULTS));
-    return s;
-  }
-
-  function saveState() {
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { /* private mode etc. */ }
-  }
-
-  function pickKey(s) {
-    return { model: s.model, reflector: s.reflector, rotors: s.rotors.slice(), rings: s.rings.slice(),
-             start: s.start.slice(), plugs: s.plugs.slice() };
-  }
-
-  function validKey(s) {
-    try {
-      const m = MODELS[s.model];
-      if (!m || m.reflectors.indexOf(s.reflector) < 0) return false;
-      if (!Array.isArray(s.rotors) || s.rotors.length !== 3 || new Set(s.rotors).size !== 3) return false;
-      if (!s.rotors.every((r) => m.rotors.indexOf(r) >= 0)) return false;
-      const okNums = (a) => Array.isArray(a) && a.length === 3 && a.every((n) => Number.isInteger(n) && n >= 0 && n < 26);
-      if (!okNums(s.rings) || !okNums(s.start)) return false;
-      Enigma.parsePlugboard(s.plugs.join(' '));
-      return true;
-    } catch (e) { return false; }
+    return d;
   }
 
   /* ------------------------------------------------------------------
-   * Key <-> text  ("UKW-B | Rotors I II III | Rings 01 01 01 | Start AAA | Plugs AB CD")
+   * Service pill in the header
    * ------------------------------------------------------------------ */
-  function formatKey(s) {
-    return [
-      s.model === 'M3' ? 'Enigma M3' : 'Enigma I',
-      'UKW-' + s.reflector,
-      'Rotors ' + s.rotors.join(' '),
-      'Rings ' + s.rings.map(pad2).join(' '),
-      'Start ' + s.start.map((n) => A[n]).join(''),
-      'Plugs ' + (s.plugs.length ? s.plugs.join(' ') : 'none')
-    ].join(' | ');
+  function renderService(date) {
+    const s = P.serviceStatus(date), el = $('#service');
+    el.classList.toggle('closed', !s.open);
+    let text;
+    if (s.open) text = 'Running · trains every ~' + s.headwayMin + ' min' + (s.peak ? ' (peak)' : '');
+    else if (s.closed) text = 'Closed · first train ' + CONFIG.firstTrain;
+    else text = 'Opens in ' + fmtMin(s.startsInMin) + ' · ' + CONFIG.firstTrain;
+    el.innerHTML = '<span class="dot"></span>' + esc(text);
   }
 
-  function parseTriple(v, what) {
-    v = v.trim().toUpperCase();
-    if (/^\d/.test(v)) {
-      const nums = v.split(/[^0-9]+/).filter(Boolean).map(Number);
-      if (nums.length !== 3 || nums.some((n) => n < 1 || n > 26)) throw new Error(what + ' needs three numbers from 01 to 26.');
-      return nums.map((n) => n - 1);
+  /* ------------------------------------------------------------------
+   * Results
+   * ------------------------------------------------------------------ */
+  function verdictText(v, best, direct) {
+    const rs = fmtRs(Math.abs(v.saveRs)), mins = fmtMin(Math.abs(v.saveMin));
+    switch (v.kind) {
+      case 'closed':
+        return 'The metro has stopped for the night (last train ' + CONFIG.lastTrain + '). Road options are below.';
+      case 'metro':
+        return v.saveMin >= 1
+          ? '✅ Metro wins: ' + rs + ' cheaper and ' + mins + ' faster than an auto.'
+          : '✅ Take the metro: ' + rs + ' cheaper than an auto, and only ' + mins + ' slower.';
+      case 'tradeoff':
+        return '⚖️ Metro saves ' + rs + ', but an auto is about ' + mins + ' quicker. Your call.';
+      default:
+        return '🛺 For this trip an auto is the better deal (' + fmtRs(direct.auto.cost) + ', ' +
+               fmtMin(direct.auto.min) + '). The metro does not save you anything here.';
     }
-    const letters = v.replace(/[^A-Z]/g, '');
-    if (letters.length !== 3) throw new Error(what + ' needs three letters (like AAA) or three numbers (like 01 01 01).');
-    return letters.split('').map((c) => A.indexOf(c));
   }
 
-  function parseKey(text) {
-    const k = pickKey(DEFAULTS);
-    let model = null;
-    let gotRotors = false;
-    const segs = String(text).split(/[|\n;]+/).map((s) => s.trim()).filter(Boolean);
-    if (!segs.length) throw new Error('Paste a key first.');
-    segs.forEach((seg) => {
-      let m;
-      if ((m = seg.match(/^(?:enigma|model)\s*[:=]?\s*(I|M3)$/i))) model = m[1].toUpperCase();
-      else if ((m = seg.match(/^(?:ukw|reflector|umkehrwalze)\s*[-:=]?\s*([ABC])$/i))) k.reflector = m[1].toUpperCase();
-      else if ((m = seg.match(/^(?:rotors?|walzen(?:lage)?|wheels?|order)\s*[:=]?\s*(.+)$/i))) {
-        k.rotors = m[1].toUpperCase().split(/[^IVX]+/).filter(Boolean);
-        gotRotors = true;
+  function step(icon, title, detail, time, extra) {
+    return '<li class="step ' + (extra && extra.cls || '') + '">' +
+      '<span class="ico"' + (extra && extra.color ? ' style="background:' + extra.color + '"' : '') + '>' + icon + '</span>' +
+      '<span class="what"><b>' + title + '</b><small>' + detail + '</small></span>' +
+      '<span class="when">' + time + '</span></li>';
+  }
+
+  function timeline(trip, date) {
+    const b = trip.best, r = b.route, hw = trip.service.headwayMin;
+    let t = 0, html = '';
+
+    if (b.firstMile.mode !== 'none') {
+      html += step(MILE_ICON[b.firstMile.mode],
+        MILE_VERB[b.firstMile.mode] + ' to ' + esc(stName(r.from)) + ' station',
+        fmtKm(b.firstMile.km) + ' · ' + fmtMin(b.firstMile.min) + (b.firstMile.cost ? ' · ~' + fmtRs(b.firstMile.cost) : ''),
+        clock(date, t));
+      t += b.firstMile.min;
+    }
+
+    const wait = trip.service.startsInMin
+      ? 'First train at ' + CONFIG.firstTrain
+      : 'Ticket + security ~' + CONFIG.stationEntryMin + ' min · trains every ~' + hw + ' min';
+    html += step('🎫', 'Enter ' + esc(stName(r.from)), wait, clock(date, t));
+    t += b.waitMin;
+
+    r.legs.forEach((leg, i) => {
+      const L = LINES[leg.line];
+      if (i > 0) {
+        html += step('⇄', 'Change at ' + esc(stName(leg.stations[0])),
+          'Go to the ' + L.name + ' platform · ~' + Math.round(CONFIG.transferMin + hw / 2) + ' min with wait',
+          clock(date, t));
+        t += CONFIG.transferMin + hw / 2;
       }
-      else if ((m = seg.match(/^(?:rings?|ringstellung)\s*[:=]?\s*(.+)$/i))) k.rings = parseTriple(m[1], 'Rings');
-      else if ((m = seg.match(/^(?:start|grundstellung|positions?|pos)\s*[:=]?\s*(.+)$/i))) k.start = parseTriple(m[1], 'Start');
-      else if ((m = seg.match(/^(?:plugs?|plugboard|stecker(?:brett)?)\s*[:=]?\s*(.*)$/i))) {
-        k.plugs = /^(none|-|)$/i.test(m[1].trim()) ? [] : Enigma.parsePlugboard(m[1]);
-      }
-      else throw new Error('I didn’t understand “' + seg + '”.');
-    });
-    if (!gotRotors) throw new Error('The key must list the rotors, e.g. “Rotors I II III”.');
-    if (k.rotors.length !== 3) throw new Error('Exactly three rotors are needed, e.g. “Rotors I II III”.');
-    k.rotors.forEach((r) => { if (ALL_ROTORS.indexOf(r) < 0) throw new Error('Unknown rotor “' + r + '”. Use I to VIII.'); });
-    if (new Set(k.rotors).size !== 3) throw new Error('Each rotor can only be used once.');
-    if (!model) model = k.rotors.some((r) => MODELS.I.rotors.indexOf(r) < 0) ? 'M3' : 'I';
-    if (k.reflector === 'A' && model === 'M3') model = 'I';
-    if (model === 'I' && k.rotors.some((r) => MODELS.I.rotors.indexOf(r) < 0)) {
-      throw new Error('Rotors VI–VIII only exist on the Enigma M3.');
-    }
-    k.model = model;
-    return k;
-  }
-
-  /* ------------------------------------------------------------------
-   * Building the machine UI
-   * ------------------------------------------------------------------ */
-  function label(n) { return state.numbers ? pad2(n) : A[n]; }
-
-  function buildRotors() {
-    const wrap = $('rotors');
-    for (let i = 0; i < 3; i++) {
-      const el = document.createElement('div');
-      el.className = 'rotor';
-      el.innerHTML =
-        '<div class="rotor-name"><span class="rn"></span><small>' + SLOTS[i].toUpperCase() + '</small></div>' +
-        '<div class="rotor-body">' +
-          '<div class="rotor-col">' +
-            '<button class="turn-btn" type="button" data-dir="1" aria-label="Turn ' + SLOTS[i].toLowerCase() + ' rotor forward">▲</button>' +
-            '<div class="window" tabindex="0" role="spinbutton" aria-valuemin="1" aria-valuemax="26" ' +
-              'aria-label="' + SLOTS[i] + ' rotor position. Use arrow keys to turn." ' +
-              'title="Turn with ▲ ▼, mouse wheel, dragging or arrow keys">' +
-              '<div class="strip"><span></span><span></span><span class="cur"></span><span></span><span></span></div>' +
-            '</div>' +
-            '<button class="turn-btn" type="button" data-dir="-1" aria-label="Turn ' + SLOTS[i].toLowerCase() + ' rotor back">▼</button>' +
-          '</div>' +
-          '<div class="wheel" aria-hidden="true" title="Thumbwheel — drag or scroll to turn"></div>' +
-        '</div>' +
-        '<div class="rotor-ring"></div>';
-      wrap.appendChild(el);
-
-      const r = {
-        root: el,
-        name: el.querySelector('.rn'),
-        window: el.querySelector('.window'),
-        strip: el.querySelector('.strip'),
-        wheel: el.querySelector('.wheel'),
-        ring: el.querySelector('.rotor-ring')
-      };
-      rotorEls.push(r);
-
-      el.querySelectorAll('.turn-btn').forEach((b) => {
-        b.addEventListener('click', () => turnRotor(i, Number(b.dataset.dir)));
-      });
-      r.window.addEventListener('keydown', (e) => {
-        const dir = { ArrowUp: 1, ArrowRight: 1, PageUp: 1, ArrowDown: -1, ArrowLeft: -1, PageDown: -1 }[e.key];
-        if (dir) { e.preventDefault(); e.stopPropagation(); turnRotor(i, dir); }
-      });
-      [r.window, r.wheel].forEach((target) => {
-        let acc = 0;
-        target.addEventListener('wheel', (e) => {
-          e.preventDefault();
-          acc += e.deltaMode === 1 ? e.deltaY * 40 : e.deltaY;
-          while (Math.abs(acc) >= 40) {
-            const dir = acc > 0 ? 1 : -1;
-            acc -= dir * 40;
-            turnRotor(i, dir);
-          }
-        }, { passive: false });
-        let dragY = null;
-        target.addEventListener('pointerdown', (e) => {
-          dragY = e.clientY;
-          target.setPointerCapture(e.pointerId);
-        });
-        target.addEventListener('pointermove', (e) => {
-          if (dragY === null) return;
-          const STEP = 18;
-          while (dragY - e.clientY >= STEP) { dragY -= STEP; turnRotor(i, 1); }
-          while (e.clientY - dragY >= STEP) { dragY += STEP; turnRotor(i, -1); }
-        });
-        const end = () => { dragY = null; };
-        target.addEventListener('pointerup', end);
-        target.addEventListener('pointercancel', end);
-      });
-    }
-  }
-
-  function buildBoards() {
-    const lampboard = $('lampboard');
-    const keyboard = $('keyboard');
-    const plugboard = $('plugboard');
-
-    ROWS.forEach((row) => {
-      const lRow = document.createElement('div'); lRow.className = 'row';
-      const kRow = document.createElement('div'); kRow.className = 'row';
-      const pRow = document.createElement('div'); pRow.className = 'row';
-
-      row.split('').forEach((ch) => {
-        const lamp = document.createElement('div');
-        lamp.className = 'lamp';
-        lamp.textContent = ch;
-        lRow.appendChild(lamp);
-        lampEls[ch] = lamp;
-
-        const key = document.createElement('button');
-        key.type = 'button';
-        key.className = 'key';
-        key.textContent = ch;
-        key.setAttribute('aria-label', 'Key ' + ch);
-        kRow.appendChild(key);
-        keyEls[ch] = key;
-        key.addEventListener('pointerdown', (e) => {
-          if (e.button !== 0) return;
-          e.preventDefault(); // keep focus where it is so the physical keyboard still works
-          key.setPointerCapture(e.pointerId);
-          pressDown(ch, 'pointer');
-        });
-        const up = () => { if (held && held.source === 'pointer') release(); };
-        key.addEventListener('pointerup', up);
-        key.addEventListener('pointercancel', up);
-        key.addEventListener('lostpointercapture', up);
-        key.addEventListener('click', (e) => {
-          if (e.detail === 0) { // activated with Enter/Space while focused
-            if (pressDown(ch, 'click')) setTimeout(release, 160);
-          }
-        });
-
-        const sock = document.createElement('button');
-        sock.type = 'button';
-        sock.className = 'socket';
-        sock.innerHTML = '<span class="s-letter">' + ch + '</span><span class="s-body"><i></i><i></i></span>';
-        sock.setAttribute('aria-label', 'Plugboard socket ' + ch);
-        sock.addEventListener('click', () => onSocket(ch));
-        pRow.appendChild(sock);
-        socketEls[ch] = sock;
-      });
-
-      lampboard.appendChild(lRow);
-      keyboard.appendChild(kRow);
-      plugboard.appendChild(pRow);
+      html += step(L.short.replace('Line ', 'L'),
+        '<span class="chip" style="background:' + L.color + '">' + L.name + '</span> towards ' + esc(stName(leg.towards)),
+        leg.stops + (leg.stops === 1 ? ' stop' : ' stops') + ' · ' + fmtKm(leg.km) + ' · get off at ' + esc(stName(leg.stations[leg.stations.length - 1])),
+        clock(date, t), { cls: 'ride', color: L.color });
+      t += leg.min;
     });
 
-    if ('ResizeObserver' in window) new ResizeObserver(drawCables).observe(plugboard);
-    else window.addEventListener('resize', drawCables);
-  }
-
-  /* ------------------------------------------------------------------
-   * Rendering
-   * ------------------------------------------------------------------ */
-  function renderRotor(i, dir) {
-    const r = rotorEls[i];
-    const rotor = machine.rotors[i];
-    const pos = rotor.position;
-    const cells = r.strip.children;
-    for (let k = 0; k < 5; k++) cells[k].textContent = label(mod(pos + k - 2, 26));
-    r.name.textContent = rotor.name;
-    r.ring.textContent = 'RING ' + pad2(rotor.ring) + ' · ' + A[rotor.ring];
-    r.window.setAttribute('aria-valuenow', pos + 1);
-    r.window.setAttribute('aria-valuetext', A[pos] + ' (' + pad2(pos) + ')');
-
-    if (dir && r.strip.animate) {
-      const h = cells[0].getBoundingClientRect().height;
-      r.strip.animate(
-        [{ transform: 'translateY(' + dir * h + 'px)' }, { transform: 'translateY(0)' }],
-        { duration: 150, easing: 'cubic-bezier(.2,.8,.3,1)' }
-      );
-      wheelY[i] -= dir * 5;
-      r.wheel.style.setProperty('--wheel-y', wheelY[i] + 'px');
+    if (b.lastMile.mode !== 'none') {
+      html += step(MILE_ICON[b.lastMile.mode],
+        MILE_VERB[b.lastMile.mode] + ' to ' + esc(placeName(trip.dest)),
+        fmtKm(b.lastMile.km) + ' · ' + fmtMin(b.lastMile.min) + (b.lastMile.cost ? ' · ~' + fmtRs(b.lastMile.cost) : ''),
+        clock(date, t));
+      t += b.lastMile.min;
     }
+    html += step('🏁', 'Arrive at ' + esc(placeName(trip.dest)), '', clock(date, t));
+    return '<ol class="steps">' + html + '</ol>';
   }
 
-  function renderAllRotors(moved) {
-    for (let i = 0; i < 3; i++) renderRotor(i, moved && moved[i] ? 1 : 0);
-    renderPosStatus();
-  }
-
-  function renderPosStatus() {
-    const fmt = (arr) => arr.map(label).join(state.numbers ? '-' : '');
-    const now = machine.rotors.map((r) => r.position);
-    const differs = now.some((p, i) => p !== state.start[i]);
-    $('pos-status').innerHTML =
-      'START <b>' + fmt(state.start) + '</b><br>' +
-      'NOW <b class="' + (differs ? 'moved' : '') + '">' + fmt(now) + '</b>';
-    $('btn-reset').disabled = !differs && !tape.in;
-  }
-
-  function renderTape() {
-    const group = (s) => s.replace(/(.{5})/g, '$1 ').trim();
-    $('tape-in').textContent = group(tape.in);
-    const out = group(tape.out);
-    const el = $('tape-out');
-    el.textContent = '';
-    if (out) {
-      el.appendChild(document.createTextNode(out.slice(0, -1)));
-      const last = document.createElement('span');
-      last.className = 'last';
-      last.textContent = out.slice(-1);
-      el.appendChild(last);
+  function compareTable(trip) {
+    const rows = [];
+    if (trip.best) {
+      const modes = [trip.best.firstMile.mode, trip.best.lastMile.mode];
+      const extra = ['auto', 'cycle'].filter((m) => modes.includes(m)).join(' + ');
+      rows.push(['🚇 Metro' + (extra ? ' + ' + extra : ''), trip.best]);
     }
-    $('btn-copy-tape').disabled = !tape.out;
-    $('btn-clear-tape').disabled = !tape.out;
+    rows.push(['🛺 Auto all the way', trip.direct.auto]);
+    rows.push(['🚕 Cab all the way', trip.direct.cab]);
+    const cheapest = Math.min(...rows.map((r) => r[1].cost));
+    return '<table class="compare"><thead><tr><th>Option</th><th>Time</th><th>Cost</th><th>CO₂</th></tr></thead><tbody>' +
+      rows.map(([label, o]) => '<tr' + (o.cost === cheapest ? ' class="best"' : '') + '><td>' + label + '</td><td>' +
+        fmtMin(o.min) + '</td><td>' + fmtRs(o.cost) + '</td><td>' + fmtCo2(o.co2) + '</td></tr>').join('') +
+      '</tbody></table>';
   }
 
-  function renderTrace(result) {
-    const list = $('trace');
-    list.innerHTML = '';
-    if (!result) {
-      list.innerHTML = '<li class="trace-empty">Press any key to watch the electrical current travel through the machine.</li>';
-      $('trace-legend').hidden = true;
-      return;
-    }
-    result.path.forEach((p, idx) => {
-      const li = document.createElement('li');
-      let cls = 'chip';
-      let st = p.stage;
-      if (idx === 0) { cls += ' kb'; st = 'Key'; }
-      else if (p.stage === 'Lamp') cls += ' lamp';
-      else if (p.stage.indexOf('Reflector') === 0) { cls += ' ukw'; st = 'UKW-' + machine.reflectorName; }
-      else if (p.stage === 'Plugboard') { cls += idx < 5 ? ' in' : ' out'; st = 'Plugs'; }
-      else cls += p.dir === 'in' ? ' in' : ' out';
-      li.innerHTML = '<span class="' + cls + '"><span class="st">' + st + '</span><span class="lt">' + p.letter + '</span></span>';
-      list.appendChild(li);
-    });
-    $('trace-legend').hidden = false;
-  }
-
-  function renderPlugboard() {
-    const colorOf = {};
-    state.plugs.forEach((p, i) => { colorOf[p[0]] = colorOf[p[1]] = CABLE_COLORS[i % CABLE_COLORS.length]; });
-    for (const ch of A) {
-      const s = socketEls[ch];
-      s.classList.toggle('plugged', !!colorOf[ch]);
-      s.classList.toggle('selected', plugSel === ch);
-      if (colorOf[ch]) s.style.setProperty('--c', colorOf[ch]);
-      else s.style.removeProperty('--c');
-      const partner = state.plugs.find((p) => p.indexOf(ch) >= 0);
-      s.setAttribute('aria-label', 'Plugboard socket ' + ch + (partner ? ', connected to ' + partner.replace(ch, '') : ''));
-      s.setAttribute('aria-pressed', plugSel === ch ? 'true' : 'false');
-    }
-    $('plug-hint').textContent = plugSel
-      ? 'Now click the letter to connect with ' + plugSel + ' (Esc to cancel)'
-      : 'Click two letters to connect them with a cable · click a plugged letter to remove its cable';
-    drawCables();
-  }
-
-  function drawCables() {
-    const svg = $('cables');
-    const board = $('plugboard');
-    const box = board.getBoundingClientRect();
-    if (!box.width) return;
-    svg.setAttribute('viewBox', '0 0 ' + box.width + ' ' + box.height);
-    const k = socketEls.A.getBoundingClientRect().width;
-    const w = Math.max(3, k * 0.11);
+  function renderResults(trip, date) {
     let html = '';
-    state.plugs.forEach((p, i) => {
-      const a = socketEls[p[0]].querySelector('.s-body').getBoundingClientRect();
-      const b = socketEls[p[1]].querySelector('.s-body').getBoundingClientRect();
-      const ax = a.left + a.width / 2 - box.left, ay = a.bottom - box.top - 2;
-      const bx = b.left + b.width / 2 - box.left, by = b.bottom - box.top - 2;
-      const dist = Math.hypot(bx - ax, by - ay);
-      const sag = k * 0.6 + dist * 0.28;
-      const d = 'M' + ax + ' ' + ay + ' C' + ax + ' ' + (ay + sag) + ' ' + bx + ' ' + (by + sag) + ' ' + bx + ' ' + by;
-      const c = CABLE_COLORS[i % CABLE_COLORS.length];
-      html += '<path class="cable-shadow" d="' + d + '" stroke-width="' + (w + 3) + '" transform="translate(1.5 3)"/>' +
-              '<path class="cable" d="' + d + '" stroke="' + c + '" stroke-width="' + w + '"/>' +
-              '<path class="cable-hi" d="' + d + '" stroke-width="' + Math.max(1, w * 0.25) + '" transform="translate(-' + w * 0.18 + ' -' + w * 0.18 + ')"/>';
-    });
-    svg.innerHTML = html;
-  }
-
-  function renderSettings() {
-    const model = MODELS[state.model];
-    $('model').value = state.model;
-
-    const refl = $('reflector');
-    refl.innerHTML = model.reflectors.map((r) =>
-      '<option value="' + r + '">UKW-' + r + (r === 'B' ? ' · standard' : '') + '</option>').join('');
-    refl.value = state.reflector;
-    $('ukw-label').textContent = state.reflector;
-
-    const tbody = $('rotor-rows');
-    if (!tbody.children.length) {
-      for (let i = 0; i < 3; i++) {
-        const tr = document.createElement('tr');
-        tr.innerHTML =
-          '<td>' + SLOTS[i] + (SLOT_HINT[i] ? '<br><small>' + SLOT_HINT[i] + '</small>' : '') + '</td>' +
-          '<td><select data-kind="rotor" data-i="' + i + '" aria-label="' + SLOTS[i] + ' rotor"></select></td>' +
-          '<td><select data-kind="ring" data-i="' + i + '" aria-label="' + SLOTS[i] + ' ring setting">' +
-            A.split('').map((c, n) => '<option value="' + n + '">' + pad2(n) + ' · ' + c + '</option>').join('') + '</select></td>' +
-          '<td><select data-kind="start" data-i="' + i + '" aria-label="' + SLOTS[i] + ' start position">' +
-            A.split('').map((c, n) => '<option value="' + n + '">' + c + ' · ' + pad2(n) + '</option>').join('') + '</select></td>';
-        tbody.appendChild(tr);
-      }
-      tbody.addEventListener('change', onRotorTableChange);
-    }
-    tbody.querySelectorAll('select').forEach((sel) => {
-      const i = Number(sel.dataset.i);
-      if (sel.dataset.kind === 'rotor') {
-        sel.innerHTML = model.rotors.map((r) =>
-          '<option value="' + r + '" title="' + Enigma.ROTORS[r].note + '">' + r + '</option>').join('');
-        sel.value = state.rotors[i];
-      } else if (sel.dataset.kind === 'ring') sel.value = state.rings[i];
-      else sel.value = state.start[i];
-    });
-
-    const plugsInput = $('plugs');
-    if (document.activeElement !== plugsInput) {
-      plugsInput.value = state.plugs.join(' ');
-      plugsInput.classList.remove('invalid');
-      $('plugs-error').textContent = '';
-    }
-    const n = state.plugs.length;
-    $('plug-count').textContent = n + (n === 1 ? ' cable' : ' cables') + (n === 10 ? ' — historical standard' : '');
-    $('numbers').checked = state.numbers;
-    $('key-preview').textContent = formatKey(state);
-  }
-
-  function renderMode() {
-    const t = MODE_TEXT[state.mode];
-    $('tab-encrypt').setAttribute('aria-selected', state.mode === 'encrypt');
-    $('tab-decrypt').setAttribute('aria-selected', state.mode === 'decrypt');
-    $('msg-in-label').textContent = t.inLabel;
-    $('msg-in').placeholder = t.placeholder;
-    $('msg-out-label').textContent = t.outLabel;
-    $('swap-text').textContent = t.swap;
-    $('mode-steps').innerHTML = t.steps.map((s) => '<li>' + s + '</li>').join('');
-    $('fmt').innerHTML = t.fmts.map((f) => '<option value="' + f[0] + '">' + f[1] + '</option>').join('');
-    $('fmt').value = state.fmt;
-    renderRunButton();
-    updateMsgNote();
-  }
-
-  function renderRunButton() {
-    const btn = $('btn-run');
-    btn.classList.toggle('decrypt', state.mode === 'decrypt' && !busy);
-    btn.classList.toggle('stop', busy);
-    btn.textContent = busy ? '■ Stop' : MODE_TEXT[state.mode].run;
-  }
-
-  function updateMsgNote() {
-    const text = $('msg-in').value;
-    const letters = (prepare(text).match(/[A-Z]/g) || []).length;
-    let note = '';
-    if (text.trim()) {
-      note = letters + (letters === 1 ? ' letter' : ' letters') + ' will be ' + (state.mode === 'encrypt' ? 'encrypted' : 'decrypted') + '.';
-      if (/[0-9]/.test(text)) {
-        note += state.fmt === 'keep'
-          ? ' <span class="warn">Digits are not encrypted — the Enigma had no number keys (spell them out: ONE, TWO…).</span>'
-          : ' <span class="warn">Digits and punctuation will be dropped — spell numbers out.</span>';
-      }
-    }
-    $('msg-note').innerHTML = note;
-    $('speed-wrap').classList.toggle('off', !state.animate);
-  }
-
-  function updateOutputButtons() {
-    const has = !!$('msg-out').value;
-    $('btn-copy-out').disabled = !has;
-    $('btn-swap').disabled = !has || busy;
-  }
-
-  /* ------------------------------------------------------------------
-   * Machine actions
-   * ------------------------------------------------------------------ */
-  function buildMachine() {
-    machine = new Enigma({
-      rotors: state.rotors, rings: state.rings, positions: state.start,
-      reflector: state.reflector, plugboard: state.plugs
-    });
-    typedSinceReset = false;
-  }
-
-  /** Called after any change to the key. Resets the machine to the start position. */
-  function applySettings(opts) {
-    opts = opts || {};
-    const hadTyped = typedSinceReset && tape.in;
-    buildMachine();
-    clearTape();
-    renderTrace(null);
-    renderSettings();
-    renderAllRotors();
-    renderPlugboard();
-    saveState();
-    if (!opts.keepExample) setExample(false);
-    if (hadTyped && !opts.quiet) toast('Key changed — machine reset to the start position');
-  }
-
-  function pressDown(letter, source) {
-    if (held || (busy && source !== 'anim')) return null;
-    Sound.unlock();
-    const result = machine.pressKey(letter);
-    typedSinceReset = true;
-    held = { letter: letter, out: result.output, source: source };
-
-    keyEls[letter].classList.add('down');
-    lampEls[result.output].classList.add('lit');
-    Sound.keyDown();
-    Sound.rotorStep(result.moved);
-    Sound.lamp();
-
-    renderAllRotors(result.moved);
-    tape.in += letter;
-    tape.out += result.output;
-    renderTape();
-    renderTrace(result);
-    return result;
-  }
-
-  function release() {
-    if (!held) return;
-    keyEls[held.letter].classList.remove('down');
-    lampEls[held.out].classList.remove('lit');
-    Sound.keyUp();
-    held = null;
-  }
-
-  function turnRotor(i, dir) {
-    if (busy) return;
-    const rotor = machine.rotors[i];
-    rotor.position = mod(rotor.position + dir, 26);
-    if (!typedSinceReset) {
-      // Before typing, the thumbwheels set the start position (like a real operator would).
-      state.start[i] = rotor.position;
-      renderSettings();
-      saveState();
-    }
-    Sound.unlock();
-    Sound.wheelTick();
-    renderRotor(i, dir);
-    renderPosStatus();
-  }
-
-  function resetToStart() {
-    if (busy) return;
-    release();
-    machine.setPositions(state.start);
-    typedSinceReset = false;
-    clearTape();
-    renderTrace(null);
-    renderAllRotors([true, true, true]);
-    Sound.rotorStep([true, true, true]);
-    toast('Rotors back at the start position ' + state.start.map((n) => A[n]).join(''));
-  }
-
-  function clearTape() {
-    tape = { in: '', out: '' };
-    renderTape();
-  }
-
-  /* ------------------------------------------------------------------
-   * Plugboard
-   * ------------------------------------------------------------------ */
-  function onSocket(ch) {
-    if (busy) return;
-    Sound.unlock();
-    const existing = state.plugs.findIndex((p) => p.indexOf(ch) >= 0);
-    if (existing >= 0) {
-      const removed = state.plugs.splice(existing, 1)[0];
-      plugSel = null;
-      Sound.plugOut();
-      applySettings();
-      announce('Removed cable ' + removed);
-      return;
-    }
-    if (!plugSel) {
-      if (state.plugs.length >= MAX_PLUGS) { Sound.error(); toast('All 13 possible cables are in use', true); return; }
-      plugSel = ch;
-      Sound.ui();
-      renderPlugboard();
-      return;
-    }
-    if (plugSel === ch) { cancelPlug(); return; }
-    state.plugs.push(plugSel + ch);
-    plugSel = null;
-    Sound.plugIn();
-    applySettings();
-    announce('Connected ' + state.plugs[state.plugs.length - 1]);
-  }
-
-  function cancelPlug() {
-    if (!plugSel) return;
-    plugSel = null;
-    renderPlugboard();
-  }
-
-  /* ------------------------------------------------------------------
-   * Whole-message processing
-   * ------------------------------------------------------------------ */
-  function prepare(text) {
-    let t = String(text).normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
-    if (state.mode === 'encrypt' && state.fmt === 'x') t = t.trim().replace(/\s+/g, 'X');
-    return t;
-  }
-
-  function formatOutput(raw) {
-    if (state.fmt === 'keep') return raw;
-    if (state.mode === 'encrypt') return raw.replace(/(.{5})/g, '$1 ').trim();
-    if (state.fmt === 'x') return raw.replace(/X/g, ' ');
-    return raw;
-  }
-
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-  async function runMessage() {
-    if (busy) { cancelRun = true; return; }
-    const src = prepare($('msg-in').value);
-    if (!/[A-Z]/.test(src)) {
-      Sound.error();
-      toast('Type a message with at least one letter A–Z first', true);
-      $('msg-in').focus();
-      return;
-    }
-    const lettersOnly = state.fmt !== 'keep';
-    const verb = state.mode === 'encrypt' ? 'Encrypted' : 'Decrypted';
-    release();
-    plugSel = null;
-
-    if (!state.animate) {
-      buildMachine();
-      let raw = '';
-      let last = null;
-      let count = 0;
-      for (const ch of src) {
-        if (ch >= 'A' && ch <= 'Z') { last = machine.pressKey(ch); raw += last.output; count++; }
-        else if (!lettersOnly) raw += ch;
-      }
-      typedSinceReset = true;
-      clearTape();
-      renderAllRotors([true, true, true]);
-      renderTrace(last);
-      $('msg-out').value = formatOutput(raw);
-      Sound.unlock(); Sound.keyDown(); Sound.rotorStep([true, true, true]);
-      toast(verb + ' ' + count + (count === 1 ? ' letter' : ' letters') + ' starting from ' + state.start.map((n) => A[n]).join(''));
-      finishRun();
-      return;
-    }
-
-    // Animated: type the message on the machine, key by key.
-    buildMachine();
-    clearTape();
-    renderAllRotors();
-    busy = true;
-    cancelRun = false;
-    $('settings-fieldset').disabled = true;
-    $('keyboard').classList.add('busy');
-    renderRunButton();
-    updateOutputButtons();
-    $('msg-out').value = '';
-    let raw = '';
-    for (const ch of src) {
-      if (cancelRun) break;
-      const interval = 720 - state.speed * 64;
-      if (ch >= 'A' && ch <= 'Z') {
-        const r = pressDown(ch, 'anim');
-        raw += r.output;
-        $('msg-out').value = formatOutput(raw);
-        await sleep(interval * 0.6);
-        release();
-        await sleep(interval * 0.4);
-      } else if (!lettersOnly) {
-        raw += ch;
-        $('msg-out').value = formatOutput(raw);
-        await sleep(interval * 0.3);
-      }
-    }
-    busy = false;
-    $('settings-fieldset').disabled = false;
-    $('keyboard').classList.remove('busy');
-    renderRunButton();
-    toast(cancelRun ? 'Stopped' : verb + ' — the result is ready to copy');
-    finishRun();
-  }
-
-  function finishRun() {
-    updateOutputButtons();
-    renderPosStatus();
-    if (exampleActive && state.mode === 'decrypt') $('example-note').innerHTML = EXAMPLE.after;
-  }
-
-  function setExample(on) {
-    exampleActive = on;
-    $('example-note').hidden = !on;
-    if (on) $('example-note').innerHTML = EXAMPLE.before;
-  }
-
-  function loadExample() {
-    if (busy) return;
-    Object.assign(state, JSON.parse(JSON.stringify(EXAMPLE.key)));
-    state.mode = 'decrypt';
-    state.fmt = 'x';
-    applySettings({ quiet: true });
-    renderMode();
-    $('msg-in').value = EXAMPLE.cipher;
-    $('msg-out').value = '';
-    updateOutputButtons();
-    updateMsgNote();
-    setExample(true);
-    saveState();
-    $('btn-run').focus();
-    toast('Loaded a real 1941 message and its key');
-  }
-
-  /* ------------------------------------------------------------------
-   * Settings handlers
-   * ------------------------------------------------------------------ */
-  function onRotorTableChange(e) {
-    const sel = e.target;
-    const i = Number(sel.dataset.i);
-    if (sel.dataset.kind === 'rotor') {
-      const chosen = sel.value;
-      const other = state.rotors.indexOf(chosen);
-      if (other >= 0 && other !== i) {
-        state.rotors[other] = state.rotors[i]; // a rotor can only be in one slot — swap them
-        toast('Rotor ' + chosen + ' was already in the ' + SLOTS[other].toLowerCase() + ' slot, so they swapped places');
-      }
-      state.rotors[i] = chosen;
-    } else if (sel.dataset.kind === 'ring') {
-      state.rings[i] = Number(sel.value);
+    if (trip.best) {
+      const b = trip.best;
+      html += '<div class="summary">' +
+        '<div class="stat"><b>' + fmtMin(b.min) + '</b><small>door to door</small></div>' +
+        '<div class="stat"><b>' + fmtRs(b.cost) + '</b><small>metro ' + fmtRs(b.route.fare) + '</small></div>' +
+        '<div class="stat"><b>' + fmtCo2(Math.max(0, trip.verdict.co2SavedG)) + '</b><small>CO₂ saved vs cab</small></div>' +
+        '</div>';
+      html += '<p class="verdict ' + trip.verdict.kind + '">' + verdictText(trip.verdict, b, trip.direct) + '</p>';
+      html += timeline(trip, date);
     } else {
-      state.start[i] = Number(sel.value);
+      html += '<p class="verdict road">Both places are closest to the same metro station, so the metro will not help. ' +
+              'Walk or take an auto.</p>';
     }
-    applySettings();
-  }
-
-  function onModelChange() {
-    state.model = $('model').value;
-    const m = MODELS[state.model];
-    if (m.reflectors.indexOf(state.reflector) < 0) state.reflector = 'B';
-    for (let i = 0; i < 3; i++) {
-      if (m.rotors.indexOf(state.rotors[i]) < 0) {
-        state.rotors[i] = m.rotors.find((r) => state.rotors.indexOf(r) < 0);
-      }
+    html += '<h3>Compare</h3>' + compareTable(trip);
+    if (trip.alternatives.length) {
+      html += '<h3>Other ways by metro</h3>' + trip.alternatives.map((a) =>
+        '<p class="alt">From ' + esc(stName(a.route.from)) + ' to ' + esc(stName(a.route.to)) + ' · ' +
+        fmtMin(a.min) + ' · ' + fmtRs(a.cost) + '</p>').join('');
     }
-    applySettings();
-  }
+    html += '<button type="button" class="share" id="share">🔗 Copy link to this trip</button>';
 
-  function onPlugsInput(final) {
-    const input = $('plugs');
-    const text = input.value;
-    try {
-      const pairs = Enigma.parsePlugboard(text);
-      input.classList.remove('invalid');
-      $('plugs-error').textContent = '';
-      if (pairs.join(' ') !== state.plugs.join(' ')) {
-        state.plugs = pairs;
-        plugSel = null;
-        applySettings();
-      }
-      if (final) input.value = pairs.join(' ');
-    } catch (err) {
-      // While typing the 2nd letter of a pair, don't nag yet.
-      const lastToken = text.toUpperCase().replace(/[^A-Z]+/g, ' ').trim().split(' ').pop();
-      const midPair = !final && lastToken.length === 1 && /incomplete|two letters/.test(err.message);
-      if (!midPair) {
-        input.classList.add('invalid');
-        $('plugs-error').textContent = err.message;
-      }
-    }
-  }
-
-  function randomKey() {
-    if (busy) return;
-    const m = MODELS[state.model];
-    const pool = m.rotors.slice();
-    const pick = () => pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
-    const rnd = () => Math.floor(Math.random() * 26);
-    state.rotors = [pick(), pick(), pick()];
-    state.reflector = Math.random() < 0.5 ? 'B' : 'C';
-    state.rings = [rnd(), rnd(), rnd()];
-    state.start = [rnd(), rnd(), rnd()];
-    const letters = A.split('').sort(() => Math.random() - 0.5);
-    state.plugs = [];
-    for (let i = 0; i < 10; i++) state.plugs.push(letters[i * 2] + letters[i * 2 + 1]);
-    applySettings({ quiet: true });
-    toast('New random key — copy it and send it to your friend');
-  }
-
-  function applyKey(k) {
-    Object.assign(state, k);
-    plugSel = null;
-    applySettings({ quiet: true });
+    resultsEl.innerHTML = html;
+    resultsEl.hidden = false;
+    $('#share').addEventListener('click', share);
   }
 
   /* ------------------------------------------------------------------
-   * Helpers: clipboard, toast, announcements
+   * Map: stations projected from lat/lng into an SVG
    * ------------------------------------------------------------------ */
-  async function copyText(text, what) {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch (e) {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.position = 'fixed'; ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      try { document.execCommand('copy'); } catch (e2) { /* ignore */ }
-      ta.remove();
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  function el(name, attrs, parent) {
+    const n = document.createElementNS(SVG_NS, name);
+    Object.keys(attrs).forEach((k) => n.setAttribute(k, attrs[k]));
+    if (parent) parent.appendChild(n);
+    return n;
+  }
+
+  function drawMap(trip) {
+    const pts = Object.keys(STATIONS).map((id) => ({ lat: STATIONS[id][1], lng: STATIONS[id][2] }));
+    if (trip) {
+      if (!trip.origin.stationId) pts.push(trip.origin);
+      if (!trip.dest.stationId) pts.push(trip.dest);
     }
-    toast(what + ' copied to the clipboard');
-  }
+    const k = Math.cos(18.55 * Math.PI / 180);
+    let minLat = Math.min(...pts.map((p) => p.lat)), maxLat = Math.max(...pts.map((p) => p.lat));
+    let minLng = Math.min(...pts.map((p) => p.lng)), maxLng = Math.max(...pts.map((p) => p.lng));
+    const W = 600, pad = 80, inner = W - 2 * pad;
+    const scale = inner / Math.max((maxLng - minLng) * k, (maxLat - minLat));
+    const H = Math.round((maxLat - minLat) * scale + 2 * pad);
+    const xy = (p) => [pad + (p.lng - minLng) * k * scale, pad + (maxLat - p.lat) * scale];
+    const sxy = (id) => xy({ lat: STATIONS[id][1], lng: STATIONS[id][2] });
 
-  let toastTimer = null;
-  function toast(msg, isError) {
-    const t = $('toast');
-    t.textContent = msg;
-    t.classList.toggle('error', !!isError);
-    t.classList.add('show');
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => t.classList.remove('show'), isError ? 3600 : 2600);
-  }
-  const announce = (msg) => toast(msg);
+    mapEl.innerHTML = '';
+    mapEl.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    mapEl.classList.toggle('has-route', !!(trip && trip.best));
 
-  function isTypingTarget(el) {
-    if (!el) return false;
-    const tag = el.tagName;
-    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
-  }
-
-  /* ------------------------------------------------------------------
-   * Wiring up events
-   * ------------------------------------------------------------------ */
-  function bindEvents() {
-    // Physical keyboard -> machine keys
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') { cancelPlug(); return; }
-      if (document.querySelector('dialog[open]')) return;
-      if (isTypingTarget(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
-      if (e.key.length !== 1 || !/[a-z]/i.test(e.key)) return;
-      e.preventDefault();
-      if (e.repeat) return;
-      pressDown(e.key.toUpperCase(), 'kbd');
-    });
-    document.addEventListener('keyup', (e) => {
-      if (held && held.source === 'kbd' && e.key.toUpperCase() === held.letter) release();
-    });
-    window.addEventListener('blur', () => { if (held && held.source !== 'anim') release(); });
-
-    // First interaction unlocks audio (browser autoplay rules)
-    const unlock = () => Sound.unlock();
-    document.addEventListener('pointerdown', unlock, { once: true });
-    document.addEventListener('keydown', unlock, { once: true });
-
-    // Soft click on ordinary buttons
-    document.addEventListener('click', (e) => {
-      if (e.target.closest('.btn, .mode-tab, .turn-btn') && !e.target.closest('#btn-run')) Sound.ui();
+    Object.keys(LINES).forEach((line) => {
+      el('polyline', { class: 'track', stroke: LINES[line].color,
+        points: LINES[line].stations.map((id) => sxy(id).join(',')).join(' ') }, mapEl);
     });
 
-    // Sound controls
-    $('btn-sound').addEventListener('click', () => {
-      state.muted = !state.muted;
-      Sound.setMuted(state.muted);
-      $('btn-sound').setAttribute('aria-pressed', String(!state.muted));
-      saveState();
-      if (!state.muted) Sound.keyDown();
-    });
-    $('volume').addEventListener('input', (e) => {
-      state.volume = Number(e.target.value);
-      Sound.setVolume(state.volume / 100);
-      if (state.muted && state.volume > 0) { state.muted = false; Sound.setMuted(false); $('btn-sound').setAttribute('aria-pressed', 'true'); }
-      saveState();
-    });
-    $('volume').addEventListener('change', () => Sound.wheelTick());
+    const onRoute = new Set();   // stations where you board, change or get off
+    if (trip && trip.best) {
+      const b = trip.best;
+      if (b.firstMile.mode !== 'none') el('line', lineAttrs(xy(trip.origin), sxy(b.route.from)), mapEl);
+      if (b.lastMile.mode !== 'none') el('line', lineAttrs(sxy(b.route.to), xy(trip.dest)), mapEl);
+      b.route.legs.forEach((leg) => {
+        onRoute.add(leg.stations[0]);
+        onRoute.add(leg.stations[leg.stations.length - 1]);
+        el('polyline', { class: 'route', stroke: LINES[leg.line].color,
+          points: leg.stations.map((id) => sxy(id).join(',')).join(' ') }, mapEl);
+      });
+    }
 
-    // Machine
-    $('btn-reset').addEventListener('click', resetToStart);
-    $('btn-copy-tape').addEventListener('click', () => copyText(tape.out.replace(/(.{5})/g, '$1 ').trim(), 'Tape output'));
-    $('btn-clear-tape').addEventListener('click', clearTape);
+    const selected = new Set();
+    [fromIn.value, toIn.value].forEach((v) => { const p = resolve(v); if (p && p.stationId) selected.add(p.stationId); });
 
-    // Message
-    $('tab-encrypt').addEventListener('click', () => setMode('encrypt'));
-    $('tab-decrypt').addEventListener('click', () => setMode('decrypt'));
-    $('msg-in').addEventListener('input', updateMsgNote);
-    $('msg-in').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runMessage(); }
-    });
-    $('fmt').addEventListener('change', (e) => { state.fmt = e.target.value; saveState(); updateMsgNote(); });
-    $('animate').addEventListener('change', (e) => { state.animate = e.target.checked; saveState(); updateMsgNote(); });
-    $('speed').addEventListener('input', (e) => { state.speed = Number(e.target.value); saveState(); });
-    $('btn-run').addEventListener('click', runMessage);
-    $('btn-clear-msg').addEventListener('click', () => {
-      $('msg-in').value = ''; $('msg-out').value = '';
-      setExample(false); updateMsgNote(); updateOutputButtons(); $('msg-in').focus();
-    });
-    $('btn-copy-out').addEventListener('click', () => copyText($('msg-out').value, state.mode === 'encrypt' ? 'Ciphertext' : 'Plaintext'));
-    $('btn-swap').addEventListener('click', () => {
-      const out = $('msg-out').value;
-      setMode(state.mode === 'encrypt' ? 'decrypt' : 'encrypt');
-      $('msg-in').value = out;
-      $('msg-out').value = '';
-      updateMsgNote(); updateOutputButtons();
-      toast('Moved to the ' + (state.mode === 'encrypt' ? 'Encrypt' : 'Decrypt') + ' tab — same key, same start position');
-    });
-    $('btn-example').addEventListener('click', loadExample);
+    Object.keys(STATIONS).forEach((id) => {
+      const [x, y] = sxy(id), lines = P.linesAt(id), xchg = lines.length > 1;
+      const st = LINES[lines[0]].stations;
+      const terminal = lines.length === 1 && (st[0] === id || st[st.length - 1] === id);
+      const c = el('circle', { cx: x, cy: y, r: xchg ? 8 : 6,
+        class: 'stn' + (xchg ? ' xchg' : '') + (selected.has(id) ? ' sel' : ''),
+        stroke: LINES[lines[0]].color, tabindex: 0, role: 'button', 'aria-label': stName(id) }, mapEl);
+      el('title', {}, c).textContent = stName(id);
+      c.addEventListener('click', () => pickStation(id));
+      c.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pickStation(id); } });
 
-    // Settings
-    $('model').addEventListener('change', onModelChange);
-    $('reflector').addEventListener('change', (e) => { state.reflector = e.target.value; applySettings(); });
-    $('plugs').addEventListener('input', () => onPlugsInput(false));
-    $('plugs').addEventListener('blur', () => onPlugsInput(true));
-    $('numbers').addEventListener('change', (e) => { state.numbers = e.target.checked; saveState(); renderAllRotors(); });
-    $('btn-random').addEventListener('click', randomKey);
-    $('btn-copy-key').addEventListener('click', () => copyText(formatKey(state), 'Key'));
-    $('btn-default-key').addEventListener('click', () => { if (!busy) { applyKey(pickKey(DEFAULTS)); toast('Settings back to the defaults'); } });
-
-    // Load-key dialog
-    const loadDlg = $('load-dialog');
-    $('btn-load-key').addEventListener('click', () => {
-      if (busy) return;
-      $('load-text').value = '';
-      $('load-error').textContent = '';
-      loadDlg.showModal();
-      $('load-text').focus();
-    });
-    $('load-apply').addEventListener('click', () => {
-      try {
-        const k = parseKey($('load-text').value);
-        applyKey(k);
-        loadDlg.close();
-        toast('Key loaded: ' + k.rotors.join('-') + ', start ' + k.start.map((n) => A[n]).join(''));
-      } catch (err) {
-        Sound.error();
-        $('load-error').textContent = err.message;
+      if (xchg || terminal || onRoute.has(id) || selected.has(id)) {
+        const aqua = lines[0] === 'aqua' && !xchg;
+        const t = el('text', aqua
+          ? { x: x + 6, y: y + 18, class: 'lbl', transform: 'rotate(30 ' + (x + 6) + ' ' + (y + 18) + ')' }
+          : { x: xchg ? x - 12 : x + 11, y: y + 4, class: 'lbl', 'text-anchor': xchg ? 'end' : 'start' }, mapEl);
+        t.textContent = stName(id);
       }
     });
 
-    // Guide & welcome
-    const guide = $('guide');
-    const openGuide = () => guide.showModal();
-    const closeWelcome = () => { $('welcome').hidden = true; state.welcomed = true; saveState(); };
-    $('btn-guide').addEventListener('click', openGuide);
-    $('guide-close').addEventListener('click', () => guide.close());
-    $('guide-ok').addEventListener('click', () => { guide.close(); closeWelcome(); });
-    $('welcome-guide').addEventListener('click', () => { openGuide(); closeWelcome(); });
-    $('welcome-close').addEventListener('click', closeWelcome);
-    [guide, loadDlg].forEach((d) => d.addEventListener('click', (e) => { if (e.target === d) d.close(); }));
+    if (trip) {
+      [[trip.origin, '#1f8a4c', 'A'], [trip.dest, '#b3261e', 'B']].forEach(([p, color, tag]) => {
+        if (p.stationId) return;
+        const [x, y] = xy(p);
+        el('circle', { cx: x, cy: y, r: 9, fill: color, class: 'pin' }, mapEl);
+        const left = x > W / 2;   // keep labels on the right half inside the map
+        const t = el('text', { x: left ? x - 13 : x + 13, y: y + 4, class: 'lbl', 'text-anchor': left ? 'end' : 'start' }, mapEl);
+        t.textContent = tag + ' · ' + p.name;
+      });
+    }
   }
 
-  function setMode(mode) {
-    if (busy || state.mode === mode) return;
-    state.mode = mode;
-    saveState();
-    renderMode();
-    if (exampleActive && mode === 'encrypt') setExample(false);
+  function lineAttrs(a, b) { return { x1: a[0], y1: a[1], x2: b[0], y2: b[1], class: 'mile' }; }
+
+  function drawLegend() {
+    $('#legend').innerHTML = Object.keys(LINES).map((l) =>
+      '<span><i style="background:' + LINES[l].color + '"></i>' + LINES[l].name + '</span>').join('');
+  }
+
+  function pickStation(id) {
+    if (pickNext === 'from') {
+      fromIn.value = stName(id);
+      toIn.value = '';
+      resultsEl.hidden = true;
+      pickNext = 'to';
+      drawMap(null);
+      toIn.focus();
+    } else {
+      toIn.value = stName(id);
+      pickNext = 'from';
+      plan();
+    }
   }
 
   /* ------------------------------------------------------------------
-   * Start-up
+   * Planning, sharing, persistence
+   * ------------------------------------------------------------------ */
+  function showError(msg) {
+    errorEl.textContent = msg;
+    errorEl.hidden = !msg;
+  }
+
+  function mile() { return form.elements.mile.value; }
+
+  function plan() {
+    showError('');
+    const from = resolve(fromIn.value), to = resolve(toIn.value);
+    if (!from) return showError('Pick a "From" place from the list (start typing a station or landmark).');
+    if (!to) return showError('Pick a "To" place from the list (start typing a station or landmark).');
+    if (from.stationId && from.stationId === to.stationId) return showError('From and To are the same station.');
+
+    const date = departure();
+    const trip = P.planTrip(from, to, { date, mile: mile() });
+    renderService(date);
+    renderResults(trip, date);
+    drawMap(trip);
+    save();
+    if (fromIn.value !== MY_LOCATION) history.replaceState(null, '', '#' + hashFor());
+    if (window.matchMedia('(max-width: 899px)').matches) resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function hashFor() {
+    return new URLSearchParams({ from: fromIn.value, to: toIn.value, mile: mile() }).toString();
+  }
+
+  function share() {
+    const url = location.href.split('#')[0] + '#' + hashFor();
+    const btn = $('#share');
+    const done = () => { btn.textContent = '✔ Link copied'; };
+    if (navigator.clipboard) navigator.clipboard.writeText(url).then(done, () => prompt('Copy this link:', url));
+    else prompt('Copy this link:', url);
+  }
+
+  function setMile(value) {
+    const r = form.querySelector('input[name=mile][value="' + value + '"]');
+    if (r) r.checked = true;
+  }
+
+  function save() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ mile: mile() })); } catch (e) { /* private mode */ }
+  }
+
+  function load() {
+    try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (s && s.mile) setMile(s.mile); } catch (e) { /* ignore */ }
+  }
+
+  function locate() {
+    if (!navigator.geolocation) return showError('Your browser cannot share its location.');
+    const btn = $('#locate');
+    btn.disabled = true;
+    navigator.geolocation.getCurrentPosition((pos) => {
+      btn.disabled = false;
+      const { latitude: lat, longitude: lng } = pos.coords, b = CONFIG.bounds;
+      if (lat < b.minLat || lat > b.maxLat || lng < b.minLng || lng > b.maxLng) {
+        return showError('You seem to be outside Pune. Pick a starting place from the list instead.');
+      }
+      myLocation = { lat, lng };
+      fromIn.value = MY_LOCATION;
+      showError('');
+      if (toIn.value) plan(); else toIn.focus();
+    }, () => {
+      btn.disabled = false;
+      showError('Could not get your location. Pick a starting place from the list instead.');
+    }, { enableHighAccuracy: true, timeout: 10000 });
+  }
+
+  /* ------------------------------------------------------------------
+   * Wiring
    * ------------------------------------------------------------------ */
   function init() {
-    // A key in the URL (#key=...) overrides the saved one.
-    const m = location.hash.match(/key=([^&]+)/);
-    if (m) {
-      try { Object.assign(state, parseKey(decodeURIComponent(m[1]))); } catch (e) { /* ignore bad links */ }
+    fillDatalist();
+    drawLegend();
+    load();
+    const now = new Date();
+    whenIn.value = clock(now, 0);
+    renderService(now);
+    drawMap(null);
+
+    form.addEventListener('submit', (e) => { e.preventDefault(); plan(); });
+    $('#swap').addEventListener('click', () => {
+      [fromIn.value, toIn.value] = [toIn.value, fromIn.value];
+      if (fromIn.value && toIn.value) plan();
+    });
+    $('#locate').addEventListener('click', locate);
+    form.querySelectorAll('input[name=mile]').forEach((r) => r.addEventListener('change', () => {
+      save();
+      if (!resultsEl.hidden) plan();
+    }));
+    whenIn.addEventListener('change', () => { if (!resultsEl.hidden) plan(); else renderService(departure()); });
+    document.querySelectorAll('.quick button').forEach((b) => b.addEventListener('click', () => {
+      fromIn.value = b.dataset.from;
+      toIn.value = b.dataset.to;
+      plan();
+    }));
+
+    const params = new URLSearchParams(location.hash.slice(1));
+    if (params.get('from') && params.get('to')) {
+      fromIn.value = params.get('from');
+      toIn.value = params.get('to');
+      if (params.get('mile')) setMile(params.get('mile'));
+      plan();
     }
-
-    buildRotors();
-    buildBoards();
-
-    const legend = document.createElement('p');
-    legend.className = 'trace-legend';
-    legend.id = 'trace-legend';
-    legend.hidden = true;
-    legend.innerHTML = 'Current flows <span class="d" style="background:#3e5a6e"></span>right → left into the reflector, ' +
-      'then <span class="d" style="background:#7a4a4a"></span>back left → right by a different path. ' +
-      'That’s why a letter can never become itself.';
-    $('trace').after(legend);
-
-    Sound.setMuted(state.muted);
-    Sound.setVolume(state.volume / 100);
-    $('btn-sound').setAttribute('aria-pressed', String(!state.muted));
-    $('volume').value = state.volume;
-    $('animate').checked = state.animate;
-    $('speed').value = state.speed;
-    if (!state.welcomed) $('welcome').hidden = false;
-
-    bindEvents();
-    applySettings({ quiet: true });
-    renderMode();
-    updateOutputButtons();
   }
 
   init();
