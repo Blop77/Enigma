@@ -80,6 +80,7 @@ The Gap Map can include the planned Hinjewadi–Shivajinagar Line 3 as a scenari
 - **Accessible mode:** larger controls and a step-free routing option with slower walking and extra station time; lift data are unverified placeholders until checked against Maha-Metro accessibility information
 - Live service status, interactive network map, shareable trip links
 - Report crowding, lift and escalator problems; active reports appear on the map and can inform accessible routing
+- **Ask MetroMitra:** an offline English and Marathi help chat for trips, fares, timings, concessions, station reports, and Gap Map feeder suggestions
 - **My metro savings:** log the trips you take; see ₹ and CO₂ saved this month
 - **Shareable savings card:** create a 1080×1080 English or Marathi PNG with this month's totals, ready to share or download
 - **Works offline** (installable PWA), even underground with no signal
@@ -149,6 +150,7 @@ node tests/gapmap.test.js      # Gap Map engine
 node tests/i18n.test.js        # every string translated, every key used exists
 node tests/savings.test.js     # savings totals and month filtering
 node tests/reports.test.js     # station reports and expiry
+node tests/assistant.test.js   # offline help intents and engine values
 node tests/share.test.js       # share links round-trip; bad links are ignored safely
 node tests/story.test.js       # the story's numbers match the planner and the Gap Map
 ```

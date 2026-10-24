@@ -188,6 +188,23 @@
     <p><a href="story.html" data-i18n="story.link">▶ Ride the story: the pitch in 2 minutes</a></p>
   </footer>
 
+  <button type="button" id="ask-launcher" class="ask-launcher" aria-haspopup="dialog" aria-controls="ask-dialog" data-i18n="assistant.launch">💬 Ask</button>
+  <dialog id="ask-dialog" class="ask-dialog" aria-labelledby="ask-title">
+    <div class="ask-head"><h2 id="ask-title" data-i18n="assistant.title">Ask MetroMitra</h2><button type="button" id="ask-close" class="link-btn" data-i18n="assistant.close">Close</button></div>
+    <div id="ask-messages" class="ask-messages" role="log" aria-live="polite" aria-relevant="additions text"></div>
+    <div class="ask-chips" data-i18n-attr="aria-label:assistant.examplesLabel" aria-label="Examples">
+      <button type="button" data-ask-example="assistant.example.trip" data-i18n="assistant.example.trip">PCMC to Swargate</button>
+      <button type="button" data-ask-example="assistant.example.fare" data-i18n="assistant.example.fare">Fare from Vanaz to Swargate</button>
+      <button type="button" data-ask-example="assistant.example.time" data-i18n="assistant.example.time">How often do trains run?</button>
+      <button type="button" data-ask-example="assistant.example.feeders" data-i18n="assistant.example.feeders">Where should feeder buses go?</button>
+    </div>
+    <form id="ask-form" class="ask-form">
+      <label class="sr-only" for="ask-input" data-i18n="assistant.inputLabel">Ask about a trip, fare or station</label>
+      <input id="ask-input" type="text" autocomplete="off" data-i18n-attr="placeholder:assistant.inputPlaceholder" placeholder="Type a question…">
+      <button type="submit" data-i18n="assistant.send">Send</button>
+    </form>
+  </dialog>
+
   <script src="js/data.js"></script>
   <script src="js/i18n.js"></script>
   <script src="js/population.js"></script>
@@ -195,6 +212,7 @@
   <script src="js/savings.js"></script>
   <script src="js/reports.js"></script>
   <script src="js/gapmap.js"></script>
+  <script src="js/assistant.js"></script>
   <script src="js/vendor/qrcode.js"></script>
   <script src="js/share.js"></script>
   <script src="js/app.js"></script>
