@@ -3,6 +3,7 @@
 const assert = require('assert');
 const G = require('../js/gapmap.js');
 const P = require('../js/planner.js');
+const POP = require('../js/population.js');
 const { HUBS, CONFIG } = require('../js/data.js');
 
 let passed = 0;
@@ -90,6 +91,55 @@ test('Summary bands add up', () => {
   const s = G.summary(state, -1);
   assert.strictEqual(s.good + s.mixed + s.poor + s.none, s.cells);
   assert.ok(Math.abs(s.goodPct + s.mixedPct + s.poorPct - 100) < 1e-9);
+});
+
+test('Population grid matches the Gap Map grid', () => {
+  // If this fails, the grid in data.js changed: rerun tools/population.py.
+  const g = CONFIG.gapMap;
+  ['minLat', 'maxLat', 'minLng', 'maxLng', 'step'].forEach(k => assert.strictEqual(POP.grid[k], g[k], k));
+  assert.strictEqual(POP.rows, Math.round((g.maxLat - g.minLat) / g.step));
+  assert.strictEqual(POP.cols, Math.round((g.maxLng - g.minLng) / g.step));
+  assert.strictEqual(POP.people.length, POP.rows * POP.cols);
+  POP.people.forEach(n => assert.ok(Number.isInteger(n) && n >= 0, n));
+});
+
+test('Every square carries its residents', () => {
+  state.cells.forEach(c => assert.strictEqual(c.people, POP.people[c.row * POP.cols + c.col]));
+  const total = state.cells.reduce((sum, c) => sum + c.people, 0);
+  // WorldPop puts roughly 6–7 million people around Pune and Pimpri-Chinchwad.
+  assert.ok(total > 5e6 && total < 8e6, total);
+});
+
+test('Resident shares add up and weight each square by its people', () => {
+  [-1, 0, 5].forEach(hub => {
+    const s = G.summary(state, hub);
+    const byBand = { good: 0, mixed: 0, poor: 0, none: 0 };
+    state.cells.forEach((c, i) => { byBand[G.band(G.cellScore(state, i, hub))] += c.people; });
+    ['good', 'mixed', 'poor', 'none'].forEach(b => assert.strictEqual(s.people[b], byBand[b], b));
+    assert.strictEqual(s.people.rated, byBand.good + byBand.mixed + byBand.poor);
+    assert.ok(Math.abs(s.goodPeoplePct + s.mixedPeoplePct + s.poorPeoplePct - 100) < 1e-9);
+    assert.ok(Math.abs(s.goodPeoplePct - 100 * byBand.good / s.people.rated) < 1e-9);
+  });
+});
+
+test('Suggested feeders are ranked by residents helped', () => {
+  const s = G.build({ peak: true });
+  const base = G.summary(s, -1);
+  const [first] = G.recommend(s, 1, -1);
+  assert.ok(first.gainPeople > 0 && first.gainKm2 > 0);
+  assert.ok(first.goodPeoplePct > base.goodPeoplePct);
+  // No other single feeder helps more residents (gain = rise in score x residents).
+  const before = s.cells.map((c, i) => G.cellScore(s, i, -1) || 0);
+  const gainOf = id => {
+    G.setFeeder(s, id, true);
+    const g = s.cells.reduce((sum, c, i) => sum + ((G.cellScore(s, i, -1) || 0) - before[i]) * c.people, 0);
+    G.setFeeder(s, id, false);
+    return g;
+  };
+  assert.ok(Math.abs(gainOf(first.station) - first.gainPeople) < 1e-6 * first.gainPeople);
+  ['vanaz', 'swargate', 'pcmc', 'yerawada', 'khadki'].filter(id => id !== first.station)
+    .forEach(id => assert.ok(gainOf(id) <= first.gainPeople, id));
+  assert.deepStrictEqual(G.feederList(s), []);
 });
 
 test('Score bands', () => {

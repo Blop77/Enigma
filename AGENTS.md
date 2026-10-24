@@ -11,6 +11,7 @@ It is plain HTML, CSS and JavaScript with **no build step and no dependencies**,
 | File | Role | Rules |
 |---|---|---|
 | `js/data.js` | Stations, lines, Marathi names, landmarks, hubs, `CONFIG` (fares, speeds, tariffs, feeder model, grid) | **Every number lives here.** Never hard-code fares, speeds or coordinates elsewhere. |
+| `js/population.js` | Residents in every Gap Map square (WorldPop 2020) | **Generated** by `tools/population.py`; do not edit by hand. Rerun it if the grid in `CONFIG.gapMap` changes (a test checks they match). |
 | `js/planner.js` | Trip engine: routing, fares, concessions, first/last mile, verdict | No DOM. UMD: works in Node and the browser. |
 | `js/savings.js` | Month filtering and totals for the savings tracker | No DOM. UMD: works in Node and the browser. |
 | `js/gapmap.js` | Gap Map engine: grid, scoring, feeders, recommendations | No DOM. Must stay consistent with `planner.js` (a test checks this). |
@@ -42,6 +43,7 @@ npx serve .                    # then open http://localhost:3000
 - **Timetable** (w.e.f. 15 Aug 2025): 06:00–23:00; every 6 min at peak (08:00–11:00, 16:00–20:00), every 10 min otherwise.
 - **Stations**: Range Hill is built but not open, so it is not a stop. The interchange's id is `civil-court`; its official name is **District Court** (Civil Court is a search alias in `STATION_ALIASES`).
 - **Auto fares** use the Pune RTA meter tariff (`CONFIG.auto`, night surcharge included). Road distance, road speeds and cab fares are calibrated on `CALIBRATION_TRIPS`; a test keeps the model within 10% of every collected range, so change those numbers together.
+- **Population** comes from WorldPop's 2020 India 1 km grid (CC BY 4.0, keep the attribution). The raw file is on the `data/worldpop` branch, never on `main`. Gap Map headlines and feeder rankings count residents; area is shown only as a secondary figure.
 - Coordinates, CO₂ and the feeder model are still estimates.
 
 ## Conventions

@@ -6,7 +6,7 @@ Built for the Pune Metro hackathon · theme **Urban mobility**.
 
 ### ▶ [Live demo: blop77.github.io/metro-mitra](https://blop77.github.io/metro-mitra/)
 
-![Urban mobility](https://img.shields.io/badge/theme-urban%20mobility-8e3fa8) ![No build step](https://img.shields.io/badge/build-none-555) ![Tests](https://img.shields.io/badge/tests-75%20passing-2f9e5f) ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
+![Urban mobility](https://img.shields.io/badge/theme-urban%20mobility-8e3fa8) ![No build step](https://img.shields.io/badge/build-none-555) ![Tests](https://img.shields.io/badge/tests-79%20passing-2f9e5f) ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
 
 [![The Gap Map with five suggested feeders switched on](screenshot.png)](https://blop77.github.io/metro-mitra/)
 
@@ -21,25 +21,27 @@ Nobody can see where this happens. Ridership numbers say *how many* people use a
 ### 🗺️ Gap Map (for the city: Maha-Metro, PMC, PMPML)
 
 - **Splits Pune into ~0.9 km squares.** For every square and each of 12 major hubs (Hinjewadi, Kharadi, Magarpatta, Bhosari MIDC, the railway station, Swargate, the airport, Camp, Fergusson, SPPU, COEP, MIT-WPU), it plans the trip door to door and compares it with an auto.
-- **Colours each square:** green where the metro beats an auto, amber where it's cheaper but slower, red where an auto is simply better.
-- **Gives one headline number:** *"At peak hour, the metro beats an auto from 37% of Pune's area near the metro."*
-- **Simulates feeders** (₹10 e-bus or shared e-rickshaw from a station, up to 6 km). It tests a feeder at every station and greedily picks the five that improve access the most: **37% → 53%**.
+- **Colours each square:** green where the metro beats an auto, amber where it's cheaper but slower, red where an auto is simply better. Squares where hardly anyone lives (hills, the river, the airfield) are faded.
+- **Counts people, not area.** Every square carries its residents from WorldPop's 2020 population grid. The headline is *"At peak hour, the metro beats an auto for 30% of the 61 lakh people living near the metro."* By area it would be 37%, so the gaps are worse where people actually live.
+- **Simulates feeders** (₹10 e-bus or shared e-rickshaw from a station, up to 6 km). It tests a feeder at every station and greedily picks the five that help the most residents: **30% → 44%** of residents. Each suggestion says how many residents it serves better (*"Ramwadi: +1.1 lakh residents"*).
 - **Lets you place feeders yourself:** tap any station to add or remove one and the map updates instantly.
-- **City report:** ranks all 12 hubs by metro access, with the single best feeder for each. Print it or save it as a PDF to hand to decision-makers.
-- **Tap any square** to see every trip from there (route, time and cost vs an auto), then open it in the trip planner.
+- **City report:** ranks all 12 hubs by the share of residents the metro serves, with the single best feeder for each. Print it or save it as a PDF to hand to decision-makers.
+- **Tap any square** to see how many people live there and every trip from there (route, time and cost vs an auto), then open it in the trip planner.
 - **Share any view:** the destination, peak/off-peak, Line 3, chosen feeders and language live in the link. Copy it, or show a **QR code** on stage so judges open your exact view on their phones. Trips in the planner have a QR code too.
 - **Quick guide:** a 5-step tour on the first visit (pick a destination → add feeders → tap a square → city report → trip planner), replayable from the **?** button.
 
-What the model finds (peak hour; official fares, timetable and auto tariff, road model calibrated on real trips):
+What the model finds (peak hour; official fares, timetable and auto tariff, road model calibrated on real trips; shares are of the 61 lakh residents within reach of the metro):
 
 | Finding | Number |
 |---|---|
-| Worst-served hub | **Hinjewadi**: the metro wins from only 23% of the area; the planned Line 3 scenario raises it to **54%** |
-| Best-served hubs | **Pune Railway Station** and **COEP**: 77% |
-| Best single feeder for the city | **Ramwadi**: serves Kharadi, Viman Nagar and the airport |
-| One feeder at Kalyani Nagar, for the Airport | Area where an auto is better: 26% → 11% |
-| Opening Range Hill station (built, not yet open) | Metro wins for SPPU trips: 26% → 42%; city-wide: 37% → 42% |
-| Five suggested feeders | Area where the metro wins: **37% → 53%** |
+| Headline | The metro beats an auto for **30% of residents** (37% of the area): the metro serves empty land better than dense neighbourhoods |
+| Worst-served hub | **Magarpatta City**: the metro wins for only **17%** of residents, and an auto is better for 53% |
+| Best-served hubs | **COEP** 67% and **Pune Railway Station** 60% |
+| Hinjewadi and planned Line 3 | 47% of residents today (23% of the area); the Line 3 scenario raises it to **81%** |
+| Best single feeder for the city | **Ramwadi**: +1.1 lakh residents better served (Kharadi, Viman Nagar, the airport) |
+| One feeder at Kalyani Nagar, for the Airport | Residents for whom an auto is better: 27% → **5%** |
+| Opening Range Hill station (built, not yet open) | Metro wins for SPPU trips: 32% → 56% of residents; city-wide: 30% → 37% |
+| Five suggested feeders | Residents for whom the metro wins: **30% → 44%** |
 
 ### 🌐 English / मराठी
 
@@ -47,7 +49,7 @@ The whole app (both tabs, the city report, errors and units) switches to Marathi
 
 ### 🚈 Line 3 (planned)
 
-The Gap Map can include the planned Hinjewadi–Shivajinagar Line 3 as a scenario. At peak hour, the area where the metro beats an auto for trips to Hinjewadi Phase 1 rises from **23% to 54%** in this model. Line 3's 45-minute end-to-end time is an estimate; the station list and coordinates are unverified estimates that should be checked on a map. PMRDA's fare is modeled with the existing slabs and may differ from the final fare.
+The Gap Map can include the planned Hinjewadi–Shivajinagar Line 3 as a scenario. At peak hour, the share of residents for whom the metro beats an auto for trips to Hinjewadi Phase 1 rises from **47% to 81%** in this model (by area, 23% to 54%). Line 3's 45-minute end-to-end time is an estimate; the station list and coordinates are unverified estimates that should be checked on a map. PMRDA's fare is modeled with the existing slabs and may differ from the final fare.
 
 ### 🧭 Trip planner (for riders)
 
@@ -66,6 +68,7 @@ The Gap Map can include the planned Hinjewadi–Shivajinagar Line 3 as a scenari
 
 ```
 js/data.js       Network (50 stations, 3 lines including planned Line 3), Marathi names, landmarks, 12 hubs, every tunable number
+js/population.js Residents in every Gap Map square (WorldPop 2020), generated by tools/population.py
 js/i18n.js       Every user-visible string in English and Marathi; t(key, vars)
 js/planner.js    Trip engine: Dijkstra routing, fares, concessions, first/last mile, verdict (no DOM)
 js/savings.js    Month filtering and trip totals for My metro savings (no DOM)
@@ -78,14 +81,16 @@ js/guide.js      First-visit guide
 js/vendor/qrcode.js  QR Code Generator by Kazuhiko Arase (MIT), unmodified
 sw.js            Service worker for offline use
 tests/           Engine and translation tests (Node, no dependencies)
+tools/           population.py: rebuilds js/population.js from the WorldPop raster
 ```
 
 - **Routing.** One graph node per *(line, station)*, so changing lines at District Court costs real time (a platform walk plus half a headway). Dijkstra finds the fastest route.
 - **Door to door.** The engine tries up to 3 stations near each end of the trip and picks the fastest combination. Short hops are walked, longer ones taken by auto.
 - **Verdict.** *Metro* if it's cheaper and at most 5 min slower than an auto; *trade-off* if cheaper but slower; *auto* otherwise.
-- **Gap Map score.** Each square scores 1 / 0.5 / 0 per hub (metro / trade-off / auto), averaged over the hubs. Green ≥ 0.67, amber ≥ 0.34, red below.
+- **Gap Map score.** Each square scores 1 / 0.5 / 0 per hub (metro / trade-off / auto), averaged over the hubs. Green ≥ 0.67, amber ≥ 0.34, red below. Headline shares weight each square by its residents.
+- **Population.** WorldPop's 1 km India grid is cropped to Pune, and each pixel is shared between the squares it overlaps in proportion to the overlap, so no one is counted twice. A test checks the file matches the grid in `data.js`.
 - **Consistency.** The Gap Map and the trip planner run the same rules, and a test checks that they agree trip for trip.
-- **Feeders.** A rider can always ignore a feeder, so adding one never makes a trip worse (also tested). "km² better served" is the total score gain × square area, so a red square turning amber counts half.
+- **Feeders.** A rider can always ignore a feeder, so adding one never makes a trip worse (also tested). "Residents better served" is each square's score gain × its residents, so a red square turning amber counts half. Suggestions are ranked by it.
 - **Speed.** The open network's 756 station-to-station trips are precomputed once; the planned scenario has its own cached table. A feeder only re-scores trips that can use it.
 
 ### Where the numbers come from
@@ -102,6 +107,7 @@ tests/           Engine and translation tests (Node, no dependencies)
 | Concessions | Student 30% daily; card/e-ticket 10% weekdays, 30% weekends | News reports 2023–25 |
 | Station coordinates, Marathi names | hand-entered | Approximate; please check against signage |
 | CO₂, feeder model | see `CONFIG` | Estimates |
+| **Population** | Residents per square, 61 lakh within reach of the metro | **WorldPop 2020** India 1 km grid (`ind_ppp_2020_1km_Aggregated`), CC BY 4.0. Modelled estimates, not a census. Raw file on the `data/worldpop` branch |
 
 > ⚠️ Lines 1–2 fares, open stations and operating times use official Maha-Metro material, the auto tariff is Pune RTA's, and the road model is calibrated on team-collected trips. Line 3's timing, fares, station list and coordinates are estimates, as are coordinates, CO₂ and the feeder model. Everything lives in `js/data.js`, so each fix is a one-line edit, and the Gap Map and the planner both update. Search also understands the fare chart's station names (Paud Phata, S.N.D.T. College, R.T.O., Kasba Peth, Nashik Phata, Mahatma Phule Mandai, Civil Court).
 
@@ -123,10 +129,10 @@ node tests/share.test.js       # share links round-trip; bad links are ignored s
 
 ## Demo script (3 minutes)
 
-1. **The problem (Gap Map, all hubs, peak).** "The metro beats an auto from only 37% of Pune. Amber is everywhere: the metro is cheaper, but the last mile makes it slower."
-2. **Pick Hinjewadi.** The map turns red: 23%. Tick *Include Line 3 (planned)* and watch it rise to 54%. "This is why Line 3 matters."
-3. **Pick Kharadi.** Red around EON IT Park. Tap a red square to show the 5 km auto from Ramwadi that kills the trip.
-4. **Add the suggested feeders.** Watch the map turn green: 37% → 53%. Then tap a station to add a feeder by hand.
+1. **The problem (Gap Map, all hubs, peak).** "Of the 61 lakh people living near the metro, it beats an auto for only 30%. Amber is everywhere: the metro is cheaper, but the last mile makes it slower."
+2. **Pick Magarpatta City.** 17%, the worst hub. Then pick Hinjewadi, tick *Include Line 3 (planned)* and watch it rise from 47% to 81%. "This is why Line 3 matters."
+3. **Pick Kharadi.** Red around EON IT Park. Tap a red square to show how many people live there, and the 5 km auto from Ramwadi that kills the trip.
+4. **Add the suggested feeders.** Watch the map turn green: 30% → 44% of residents. Ramwadi alone serves 1.1 lakh people better. Then tap a station to add a feeder by hand.
 5. **City report.** "Here is the one feeder each hub needs." Print it as a PDF for the judges.
 6. **Open in trip planner** from a square. Show the honest verdict, switch to a *Student* ticket, then tap *I took this trip*.
 7. **Airplane mode.** Plan again: it still works offline.
@@ -139,4 +145,4 @@ The project is complete without it. If Codex credits are available at the event,
 
 ## License
 
-MIT, see [LICENSE](LICENSE). `js/vendor/qrcode.js` is © Kazuhiko Arase, MIT licence (header kept in the file).
+MIT, see [LICENSE](LICENSE). `js/vendor/qrcode.js` is © Kazuhiko Arase, MIT licence (header kept in the file). Population data: WorldPop (www.worldpop.org, School of Geography and Environmental Science, University of Southampton), CC BY 4.0.

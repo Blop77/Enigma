@@ -261,10 +261,10 @@ html.accessible #map .lbl, html.accessible #gap-map .lbl { font-size: 20px; stro
 .recs { list-style: none; margin: 8px 0; padding: 0; }
 .recs li { border-bottom: 1px solid var(--line); }
 .recs li.muted { padding: 8px 0; font-size: 13px; border: 0; }
-.recs label { display: flex; align-items: center; gap: 10px; padding: 8px 2px; cursor: pointer; }
+.recs label { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; padding: 8px 2px; cursor: pointer; }
 .recs input { width: 18px; height: 18px; accent-color: var(--brand); flex: none; }
-.rec-name { flex: 1; min-width: 0; font-weight: 600; }
-.rec-gain { color: var(--good); font-size: 13px; white-space: nowrap; }
+.rec-name { flex: 1 1 9em; min-width: 0; font-weight: 600; }
+.rec-gain { color: var(--good); font-size: 13px; white-space: nowrap; margin-left: auto; }   /* wraps under the name on phones */
 .rec-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
 .small-btn { padding: 8px 14px; font-size: 13px; }
 .small-label { width: 100%; font-size: 12px; color: var(--muted); }
@@ -282,6 +282,8 @@ html.accessible #map .lbl, html.accessible #gap-map .lbl { font-size: 20px; stro
 #gap-map .cell.mixed { fill: var(--heat-mixed); }
 #gap-map .cell.poor { fill: var(--heat-poor); }
 #gap-map .cell.none { fill: var(--line); }
+#gap-map .cell.sparse { opacity: .2; }
+.key .sparse { background: var(--heat-good); opacity: .3; }
 #gap-map .cell.sel { opacity: 1; stroke: var(--ink); stroke-width: 2; }
 #gap-map .track { fill: none; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
 #gap-map .planned-track { stroke-width: 1.5; stroke-dasharray: 5 5; opacity: .9; }
