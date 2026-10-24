@@ -6,7 +6,7 @@ Built for the Pune Metro hackathon · theme **Urban mobility**.
 
 ### ▶ [Live demo: blop77.github.io/metro-mitra](https://blop77.github.io/metro-mitra/)
 
-![Urban mobility](https://img.shields.io/badge/theme-urban%20mobility-8e3fa8) ![No build step](https://img.shields.io/badge/build-none-555) ![Tests](https://img.shields.io/badge/tests-70%20passing-2f9e5f) ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
+![Urban mobility](https://img.shields.io/badge/theme-urban%20mobility-8e3fa8) ![No build step](https://img.shields.io/badge/build-none-555) ![Tests](https://img.shields.io/badge/tests-75%20passing-2f9e5f) ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
 
 [![The Gap Map with five suggested feeders switched on](screenshot.png)](https://blop77.github.io/metro-mitra/)
 
@@ -27,6 +27,8 @@ Nobody can see where this happens. Ridership numbers say *how many* people use a
 - **Lets you place feeders yourself:** tap any station to add or remove one and the map updates instantly.
 - **City report:** ranks all 12 hubs by metro access, with the single best feeder for each. Print it or save it as a PDF to hand to decision-makers.
 - **Tap any square** to see every trip from there (route, time and cost vs an auto), then open it in the trip planner.
+- **Share any view:** the destination, peak/off-peak, Line 3, chosen feeders and language live in the link. Copy it, or show a **QR code** on stage so judges open your exact view on their phones. Trips in the planner have a QR code too.
+- **Quick guide:** a 5-step tour on the first visit (pick a destination → add feeders → tap a square → city report → trip planner), replayable from the **?** button.
 
 What the model finds (peak hour; official fares, timetable and auto tariff, road model calibrated on real trips):
 
@@ -70,7 +72,10 @@ js/savings.js    Month filtering and trip totals for My metro savings (no DOM)
 js/gapmap.js     Gap Map engine: grid, scoring, feeder simulation, greedy recommendations (no DOM)
 js/app.js        Trip planner UI, tabs, savings tracker, share links
 js/savings-card.js Draws and exports the shareable 1080×1080 savings card
-js/gap-ui.js     Gap Map UI: heat map, feeder simulator, city report
+js/gap-ui.js     Gap Map UI: heat map, feeder simulator, city report, link state
+js/share.js      Shareable links (encode/decode) and the QR-code dialog
+js/guide.js      First-visit guide
+js/vendor/qrcode.js  QR Code Generator by Kazuhiko Arase (MIT), unmodified
 sw.js            Service worker for offline use
 tests/           Engine and translation tests (Node, no dependencies)
 ```
@@ -113,6 +118,7 @@ node tests/planner.test.js     # trip engine
 node tests/gapmap.test.js      # Gap Map engine
 node tests/i18n.test.js        # every string translated, every key used exists
 node tests/savings.test.js     # savings totals and month filtering
+node tests/share.test.js       # share links round-trip; bad links are ignored safely
 ```
 
 ## Demo script (3 minutes)
@@ -125,10 +131,12 @@ node tests/savings.test.js     # savings totals and month filtering
 6. **Open in trip planner** from a square. Show the honest verdict, switch to a *Student* ticket, then tap *I took this trip*.
 7. **Airplane mode.** Plan again: it still works offline.
 
+**Tip:** set up the view you want on your laptop, press **▣ Show QR code**, and put it on screen. Judges can scan it and follow along on their phones.
+
 ## Working with Codex (optional)
 
-The project is complete without it. If Codex credits are available at the event, [`AGENTS.md`](AGENTS.md) gives Codex the architecture, rules and ready-to-paste tasks for PMPML GTFS feeders, crowd and lift reports, and accessibility mode.
+The project is complete without it. If Codex credits are available at the event, [`AGENTS.md`](AGENTS.md) gives Codex the architecture, rules and ready-to-paste tasks (PMPML GTFS feeders, crowd and lift reports). Line 3, the savings card and accessible mode were built this way.
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE). `js/vendor/qrcode.js` is © Kazuhiko Arase, MIT licence (header kept in the file).
