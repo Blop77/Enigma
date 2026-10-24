@@ -2,7 +2,7 @@
 'use strict';
 const assert = require('assert');
 const P = require('../js/planner.js');
-const { LINES, STATIONS, LANDMARKS, CONFIG } = require('../js/data.js');
+const { LINES, STATIONS, LANDMARKS, CONFIG, FARE_CODES, FARE_CHART, FARE_ASYMMETRIC, STATION_CODES, STATION_ALIASES } = require('../js/data.js');
 
 let passed = 0;
 function test(name, fn) {
@@ -24,7 +24,7 @@ test('Every station has a Marathi name', () => {
   Object.keys(STATIONS).forEach(id => assert.ok(/[\u0900-\u097F]/.test(STATIONS_MR[id] || ''), id));
 });
 
-test('Civil Court is the interchange between Purple and Aqua', () => {
+test('District Court (Civil Court) is the interchange between Purple and Aqua', () => {
   assert.deepStrictEqual(P.linesAt('civil-court').sort(), ['aqua', 'purple']);
   assert.deepStrictEqual(P.linesAt('swargate'), ['purple']);
 });
@@ -40,14 +40,14 @@ test('Same-line trip: one leg, no transfer, correct direction', () => {
   assert.strictEqual(r.transfers, 0);
   assert.strictEqual(r.legs[0].line, 'purple');
   assert.strictEqual(r.legs[0].towards, 'swargate');
-  assert.strictEqual(r.stops, 13);
+  assert.strictEqual(r.stops, 12);   // 13 open stations; Range Hill is not open yet (Maha-Metro project profile)
 });
 
 test('Reverse direction says "towards" the other terminal', () => {
   assert.strictEqual(P.route('ramwadi', 'vanaz').legs[0].towards, 'vanaz');
 });
 
-test('Cross-line trip changes at Civil Court', () => {
+test('Cross-line trip changes at District Court', () => {
   const r = P.route('pcmc', 'ramwadi');
   assert.strictEqual(r.transfers, 1);
   assert.deepStrictEqual(r.legs.map(l => l.line), ['purple', 'aqua']);
@@ -76,10 +76,57 @@ test('Fare slabs: minimum, boundaries and maximum', () => {
   assert.strictEqual(P.metroFare(50), 35);
 });
 
-test('Fares match published examples', () => {
-  assert.strictEqual(P.route('swargate', 'vanaz').fare, 30);
-  assert.strictEqual(P.route('swargate', 'ramwadi').fare, 30);
+test('Route fares come from the official Maha-Metro fare chart', () => {
+  assert.strictEqual(P.route('swargate', 'vanaz').fare, 25);
+  assert.strictEqual(P.route('swargate', 'ramwadi').fare, 25);
   assert.strictEqual(P.route('ramwadi', 'pcmc').fare, 35);
+  assert.strictEqual(P.route('vanaz', 'ramwadi').fare, 30);
+  assert.strictEqual(P.route('pcmc', 'swargate').fare, 30);
+  assert.strictEqual(P.route('civil-court', 'pmc').fare, 10);
+  // Printed differently each way on the chart; kept as printed.
+  assert.strictEqual(P.route('phugewadi', 'swargate').fare, 30);
+  assert.strictEqual(P.route('swargate', 'phugewadi').fare, 25);
+});
+
+test('Fare chart covers every station and is consistent', () => {
+  assert.strictEqual(FARE_CHART.length, FARE_CODES.length);
+  FARE_CHART.forEach((row, i) => {
+    assert.strictEqual(row.length, FARE_CODES.length);
+    assert.strictEqual(row[i], 0);
+    row.forEach((v, j) => { if (i !== j) assert.ok([10, 15, 20, 25, 30, 35].includes(v), FARE_CODES[i] + '>' + FARE_CODES[j]); });
+  });
+  Object.keys(STATIONS).forEach((id) => assert.ok(FARE_CODES.includes(STATION_CODES[id]), id + ' has no fare code'));
+  assert.strictEqual(new Set(Object.values(STATION_CODES)).size, FARE_CODES.length);
+  // Only the pairs listed in FARE_ASYMMETRIC may differ by direction.
+  const asym = [];
+  FARE_CHART.forEach((row, i) => row.forEach((v, j) => { if (i < j && v !== FARE_CHART[j][i]) asym.push(FARE_CODES[i] + '-' + FARE_CODES[j]); }));
+  assert.deepStrictEqual(asym, FARE_ASYMMETRIC.map((p) => p.join('-')));
+});
+
+test('Every station pair uses a chart fare', () => {
+  const ids = Object.keys(STATIONS);
+  ids.forEach(a => ids.forEach(b => {
+    if (a !== b) assert.strictEqual(P.route(a, b).fare, P.chartFare(a, b), a + ' → ' + b);
+  }));
+});
+
+test('End-to-end ride times match the official timetable', () => {
+  assert.ok(Math.abs(P.route('pcmc', 'swargate').rideMin - LINES.purple.runMin) < 1e-9);
+  assert.ok(Math.abs(P.route('vanaz', 'ramwadi').rideMin - LINES.aqua.runMin) < 1e-9);
+  assert.ok(Math.abs(P.route('swargate', 'pcmc').rideMin - 34) < 1e-9);
+  assert.ok(Math.abs(P.route('ramwadi', 'vanaz').rideMin - 37) < 1e-9);
+});
+
+test('Range Hill is not a stop until it opens', () => {
+  assert.ok(!STATIONS['range-hills']);
+  Object.values(LINES).forEach((l) => assert.ok(!l.stations.includes('range-hills')));
+});
+
+test('Station aliases point at real stations', () => {
+  Object.keys(STATION_ALIASES).forEach((id) => {
+    assert.ok(STATIONS[id], id);
+    assert.ok(STATION_ALIASES[id].length > 0, id);
+  });
 });
 
 test('Concessions: student every day, card more on weekends', () => {
@@ -107,6 +154,8 @@ test('Auto fare: minimum fare covers the first 1.5 km', () => {
 test('Peak hours and service window', () => {
   assert.strictEqual(P.isPeak(at(9)), true);
   assert.strictEqual(P.isPeak(at(14)), false);
+  assert.strictEqual(P.isPeak(at(16, 30)), true, 'evening peak starts at 4 PM');
+  assert.strictEqual(P.serviceStatus(at(16, 30)).headwayMin, 6, 'peak trains every 6 min');
   assert.strictEqual(P.serviceStatus(at(5, 30)).open, false);
   assert.strictEqual(P.serviceStatus(at(5, 30)).startsInMin, 30);
   assert.strictEqual(P.serviceStatus(at(22, 30)).open, true, 'runs till 23:00');

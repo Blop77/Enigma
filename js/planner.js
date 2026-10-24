@@ -72,14 +72,25 @@
     return CONFIG.fareSlabs[CONFIG.fareSlabs.length - 1][1];
   }
 
+  // Official fare between two stations from Maha-Metro's chart, or null if
+  // either station is not on it.
+  function chartFare(fromId, toId) {
+    var i = Data.FARE_CODES.indexOf(Data.STATION_CODES[fromId]);
+    var j = Data.FARE_CODES.indexOf(Data.STATION_CODES[toId]);
+    return i === -1 || j === -1 ? null : Data.FARE_CHART[i][j];
+  }
+
   function isWeekend(date) { var d = date.getDay(); return d === 0 || d === 6; }
 
-  // Fare after concession. pass: 'regular' | 'card' | 'student'.
-  function ticketFare(km, pass, date) {
-    var base = metroFare(km), c = CONFIG.concessions[pass] || CONFIG.concessions.regular;
+  // A fare after concession. pass: 'regular' | 'card' | 'student'.
+  function concession(base, pass, date) {
+    var c = CONFIG.concessions[pass] || CONFIG.concessions.regular;
     var pct = isWeekend(date) ? c.weekend : c.weekday;
     return { base: base, pct: pct, fare: Math.round(base * (100 - pct) / 100) };
   }
+
+  // Concession applied to a distance-based fare.
+  function ticketFare(km, pass, date) { return concession(metroFare(km), pass, date); }
 
   function autoFare(km) {
     var a = CONFIG.auto;
@@ -112,7 +123,14 @@
     var st = LINES[line].stations, i = st.indexOf(a), j = st.indexOf(b);
     return SEGMENTS[line][Math.min(i, j)];
   }
-  function segmentMin(km) { return km / CONFIG.metroSpeedKmh * 60 + CONFIG.dwellMin; }
+  // Running speed that makes an end-to-end ride take the timetable's runMin.
+  var SPEED = {};
+  Object.keys(LINES).forEach(function (line) {
+    var L = LINES[line], stops = L.stations.length - 2;
+    SPEED[line] = L.lengthKm * 60 / (L.runMin - CONFIG.dwellMin * stops);
+  });
+
+  function segmentMin(line, km) { return km / SPEED[line] * 60 + CONFIG.dwellMin; }
 
   function buildGraph(headway) {
     var g = {};
@@ -121,7 +139,7 @@
     Object.keys(LINES).forEach(function (line) {
       var st = LINES[line].stations;
       for (var i = 0; i + 1 < st.length; i++) {
-        var w = segmentMin(SEGMENTS[line][i]);
+        var w = segmentMin(line, SEGMENTS[line][i]);
         edge(line + '|' + st[i], line + '|' + st[i + 1], w);
         edge(line + '|' + st[i + 1], line + '|' + st[i], w);
       }
@@ -192,7 +210,7 @@
       leg.km = 0;
       for (var i = 0; i + 1 < leg.stations.length; i++) leg.km += segmentKm(leg.line, leg.stations[i], leg.stations[i + 1]);
       leg.stops = leg.stations.length - 1;
-      leg.min = leg.km / CONFIG.metroSpeedKmh * 60 + CONFIG.dwellMin * (leg.stops - 1);
+      leg.min = leg.km / SPEED[leg.line] * 60 + CONFIG.dwellMin * (leg.stops - 1);
       totalKm += leg.km; rideMin += leg.min; stops += leg.stops;
     });
 
@@ -204,8 +222,13 @@
       rideMin: rideMin,
       stops: stops,
       transfers: legs.length - 1,
-      fare: metroFare(totalKm)
+      fare: fareFor(legs[0].stations[0], legs[legs.length - 1].stations[legs[legs.length - 1].stations.length - 1], totalKm)
     };
+  }
+
+  function fareFor(fromId, toId, km) {
+    var f = chartFare(fromId, toId);
+    return f === null ? metroFare(km) : f;
   }
 
   /* ------------------------------------------------------------------
@@ -269,7 +292,7 @@
         var waitMin = CONFIG.stationEntryMin + headway / 2 + (service.startsInMin || 0);
         var transferMin = r.transfers * (CONFIG.transferMin + headway / 2);
         var metroMin = waitMin + r.rideMin + transferMin;
-        var ticket = ticketFare(r.km, pass, date);
+        var ticket = concession(r.fare, pass, date);
         options.push({
           route: r,
           ticket: ticket,
@@ -335,6 +358,8 @@
     metroFare: metroFare,
     isWeekend: isWeekend,
     ticketFare: ticketFare,
+    chartFare: chartFare,
+    concession: concession,
     autoFare: autoFare,
     cabFare: cabFare,
     route: route,

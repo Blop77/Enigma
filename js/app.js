@@ -6,7 +6,7 @@
 (function () {
   'use strict';
 
-  const { STATIONS, STATIONS_MR, LINES, LANDMARKS, LANDMARKS_MR, CONFIG } = MetroData;
+  const { STATIONS, STATIONS_MR, STATION_ALIASES, LINES, LANDMARKS, LANDMARKS_MR, CONFIG } = MetroData;
   const P = MetroPlanner, I = I18N, t = I18N.t;
   const STORE_KEY = 'metromitra-v1';
   const LANG_KEY = 'metromitra-lang';
@@ -28,6 +28,8 @@
   Object.keys(STATIONS).forEach((id) => {
     PLACES.push({ label: STATIONS[id][0], lang: 'en', place: { stationId: id } });
     if (STATIONS_MR[id]) PLACES.push({ label: STATIONS_MR[id], lang: 'mr', place: { stationId: id } });
+    // Other names (e.g. "Paud Phata", "Kasba Peth") resolve but stay out of the suggestion list.
+    (STATION_ALIASES[id] || []).forEach((label) => PLACES.push({ label, lang: 'alias', place: { stationId: id } }));
   });
   LANDMARKS.forEach(([name, lat, lng]) => {
     PLACES.push({ label: name, lang: 'en', place: { name, lat, lng } });
