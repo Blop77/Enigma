@@ -1,0 +1,211 @@
+/*
+ * story.css — story.html, the scroll-through ride. The scene is a canvas;
+ * chapters are glass cards over it. Without JavaScript the chapters simply
+ * stack and read as a normal page.
+ */
+:root {
+  --ink: #ffffff;
+  --muted: rgba(255, 255, 255, .74);
+  --glass: rgba(13, 13, 34, .68);
+  --line: rgba(255, 255, 255, .15);
+  --purple: #8e3fa8;
+  --aqua: #0fa3b1;
+  --good: #2f9e5f;
+  --good-ink: #7ee2a4;
+  --mixed: #e9a23b;
+  --poor: #d9483b;
+  --gold: #ffd27a;
+  --auto: #f2c300;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { background: #0e1030; }
+body {
+  margin: 0;
+  color: var(--ink);
+  background: #0e1030;
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Noto Sans Devanagari", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--gold); }
+a:focus-visible, button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+h1, h2 { line-height: 1.12; margin: 0 0 10px; letter-spacing: -.01em; }
+h2 { font-size: clamp(24px, 2.6vw, 32px); }
+p { margin: 0 0 10px; }
+
+#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+#dim { position: fixed; inset: 0; background: #06081a; opacity: 0; pointer-events: none; z-index: 1; }
+
+/* ---------- top bar ---------- */
+.s-top {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 5;
+  display: flex; align-items: center; gap: 12px; padding: 10px 18px 18px;
+  background: linear-gradient(rgba(8, 10, 30, .6), rgba(8, 10, 30, 0));
+}
+.s-brand { color: #fff; font-weight: 800; font-size: 19px; text-decoration: none; white-space: nowrap; }
+.s-brand .mr { font-size: 14px; font-weight: 600; opacity: .75; margin-left: 4px; }
+.led {
+  position: relative; margin: 0 auto; display: flex; gap: 14px; max-width: 48vw; overflow: hidden;
+  padding: 6px 16px; border-radius: 8px; border: 1px solid #2c2c38; background: #0a0a0f;
+  color: #ffb347; text-shadow: 0 0 6px rgba(255, 170, 60, .85); white-space: nowrap;
+  font: 600 14px/1.3 ui-monospace, "SFMono-Regular", Menlo, Consolas, "Noto Sans Devanagari", monospace;
+  letter-spacing: .05em; box-shadow: inset 0 0 14px rgba(0, 0, 0, .9);
+}
+.led::after {                                    /* dot-matrix grain */
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(circle, transparent 52%, rgba(0, 0, 0, .38) 56%) 0 0 / 3px 3px;
+}
+#led-clock { color: #ff8c3a; }
+.s-actions { display: flex; gap: 8px; }
+.s-btn {
+  appearance: none; display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 15px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .35);
+  background: rgba(255, 255, 255, .1); color: #fff; font: inherit; font-size: 14px; font-weight: 650;
+  text-decoration: none; cursor: pointer; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); white-space: nowrap;
+}
+.s-btn:hover { background: rgba(255, 255, 255, .2); }
+.s-btn.primary { background: linear-gradient(135deg, var(--purple), #5b2a86); border-color: transparent; box-shadow: 0 8px 24px rgba(142, 63, 168, .45); }
+.link { appearance: none; background: none; border: 0; padding: 0; color: var(--gold); font: inherit; text-decoration: underline; cursor: pointer; }
+
+/* ---------- chapters ---------- */
+.chapter {
+  position: relative; z-index: 3; margin: 90px 16px 16px; padding: 22px 24px;
+  background: var(--glass); border: 1px solid var(--line); border-radius: 22px;
+  backdrop-filter: blur(14px) saturate(1.2); -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .35);
+}
+.js .chapter {
+  position: fixed; margin: 0; top: 86px; left: max(20px, 5vw); width: min(480px, calc(100vw - 40px));
+  opacity: 0; visibility: hidden; transform: translateY(var(--shift, 0));
+  max-height: calc(100vh - 150px); overflow: hidden;
+}
+.mr { font-family: inherit; }
+.kicker { color: #8fe7ef; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 8px; }
+.hero h1 { font-size: clamp(42px, 6.4vw, 78px); font-weight: 850; }
+.hero h1 .mr { display: block; font-size: .5em; font-weight: 700; color: #e6c4f2; margin-top: 2px; }
+.hero .lead { font-size: clamp(20px, 2.3vw, 27px); font-weight: 750; line-height: 1.25; }
+.hero #hero-sub { color: var(--muted); }
+.scroll-cue { font-weight: 700; color: var(--gold); margin-top: 14px; }
+.scroll-cue i { display: inline-block; font-style: normal; animation: bob 1.4s ease-in-out infinite; }
+@keyframes bob { 50% { transform: translateY(6px); } }
+.skip { font-size: 14px; color: var(--muted); }
+
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; margin: 8px 0 14px; }
+.stats p { margin: 0; display: flex; flex-direction: column; }
+.stats b { font-size: clamp(30px, 3.4vw, 42px); font-weight: 850; line-height: 1.05; font-variant-numeric: tabular-nums; color: #fff; }
+.stats span { color: var(--muted); font-size: 14px; }
+.src { color: var(--muted); font-size: 12px; margin: 8px 0 0; }
+.note { color: var(--muted); font-size: 14px; }
+.punch { font-size: 18px; color: var(--gold); }
+.punch b { color: #fff; }
+
+/* chapter 2: the race */
+.race { margin: 10px 0 12px; }
+.race-row { display: grid; grid-template-columns: 76px 1fr auto; align-items: center; gap: 10px; }
+.race-label { font-weight: 700; font-size: 14px; }
+.track { position: relative; height: 28px; border-radius: 8px; background: rgba(255, 255, 255, .08); overflow: hidden; }
+.fill { position: absolute; inset: 0; clip-path: inset(0 100% 0 0); }
+.leg { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center; font-style: normal; font-size: 14px; border-right: 2px solid rgba(0, 0, 0, .35); }
+.leg.road { background: var(--auto); }
+.leg.metro { background: var(--purple); }
+.race-end { font-weight: 750; font-size: 14px; font-variant-numeric: tabular-nums; min-width: 92px; text-align: right; opacity: 0; transition: opacity .25s; }
+.race-legs { list-style: none; margin: 6px 0 12px 86px; padding: 0; color: var(--muted); font-size: 12.5px; }
+
+/* chapter 3: the people */
+.big { margin: 0; }
+.big b { font-size: clamp(60px, 8vw, 100px); line-height: 1; font-weight: 850; color: var(--good-ink); font-variant-numeric: tabular-nums; }
+.people { display: grid; grid-template-columns: repeat(20, 1fr); gap: 4px; margin: 12px 0 10px; }
+.people i { aspect-ratio: 1; border-radius: 50%; background: rgba(255, 255, 255, .14); transition: background-color .2s; }
+.people i.good { background: var(--good); }
+.people i.mixed { background: var(--mixed); }
+.people i.poor { background: var(--poor); }
+.s-key { list-style: none; display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 0; margin: 0 0 6px; font-size: 13px; color: var(--muted); }
+.s-key i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
+.s-key .good { background: var(--good); } .s-key .mixed { background: var(--mixed); } .s-key .poor { background: var(--poor); }
+
+/* chapters 4 and 5: a big visual next to the words */
+.js .chapter.feature {
+  left: 50%; width: min(1080px, calc(100vw - 32px)); top: 84px;
+  transform: translate(-50%, var(--shift, 0));
+  display: grid; grid-template-columns: 1.25fr 1fr; gap: 30px; align-items: center;
+}
+.visual { perspective: 1100px; display: flex; align-items: center; justify-content: center; min-width: 0; }
+#minimap { display: block; border-radius: 12px; background: rgba(8, 10, 28, .7); box-shadow: 0 30px 70px rgba(0, 0, 0, .5); transform-origin: 50% 80%; }
+.result { font-size: 18px; font-weight: 650; min-height: 1.5em; }
+.result b { color: var(--good-ink); font-size: 28px; font-variant-numeric: tabular-nums; }
+.s-recs { list-style: none; padding: 0; margin: 6px 0 0; }
+.s-recs li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); opacity: .45; transition: opacity .25s; font-size: 14px; }
+.s-recs li.on { opacity: 1; }
+.s-recs li.on b { color: var(--good-ink); }
+.s-recs li span { color: var(--muted); font-size: 13px; text-align: right; }
+.s-recs li.muted { opacity: 1; color: var(--muted); }
+
+.phone {
+  --pw: 250px; --ph: 500px; --ps: .5795;      /* screen scale = (phone width - 24px) / 390px */
+  width: var(--pw); height: var(--ph); padding: 12px; border-radius: 38px; overflow: hidden; position: relative;
+  background: linear-gradient(145deg, #2b2b33, #0d0d12); box-shadow: 0 40px 80px rgba(0, 0, 0, .55), inset 0 0 0 2px #3a3a44;
+  transform-origin: 50% 50%;
+}
+.phone iframe {
+  width: 390px; height: calc((var(--ph) - 24px) / var(--ps)); border: 0; border-radius: 44px; background: #f5f3f8;
+  transform: scale(var(--ps)); transform-origin: 0 0; pointer-events: none;
+}
+.chips { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 12px 0 16px; }
+.chips li { padding: 6px 12px; border-radius: 999px; background: rgba(255, 255, 255, .1); border: 1px solid var(--line); font-size: 13px; }
+
+/* chapter 6: the end of the line */
+.js .chapter.finale { left: 50%; width: min(560px, calc(100vw - 32px)); transform: translate(-50%, var(--shift, 0)); text-align: center; }
+.cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 14px 0; }
+.qr { width: 132px; margin: 6px auto 8px; padding: 8px; border-radius: 12px; background: #fff; }
+.qr svg { display: block; width: 100%; height: auto; }
+
+/* ---------- the line along the bottom ---------- */
+.linebar { position: fixed; z-index: 4; left: 50%; bottom: 16px; transform: translateX(-50%); width: min(640px, calc(100vw - 56px)); height: 30px; }
+.lb-track { position: relative; top: 14px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .35); }
+.lb-done { position: absolute; left: 0; top: 0; height: 100%; width: 0; border-radius: 2px; background: var(--purple); }
+.lb-pass { position: absolute; top: -2px; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; background: #fff; }
+.lb-stop {
+  position: absolute; top: -9px; width: 22px; height: 22px; margin-left: -11px; padding: 0;
+  border-radius: 50%; border: 4px solid var(--purple); background: #fff; cursor: pointer;
+}
+.lb-stop.here { background: var(--gold); }
+.lb-stop span {
+  position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%); white-space: nowrap;
+  font-size: 12px; font-weight: 650; padding: 2px 7px; border-radius: 6px; background: rgba(0, 0, 0, .72);
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+.lb-stop:hover span, .lb-stop:focus-visible span, .lb-stop.here span { opacity: 1; }
+.lb-train { position: absolute; top: -28px; margin-left: -10px; font-size: 16px; font-style: normal; }
+
+/* ---------- phones ---------- */
+@media (max-width: 699px) {
+  .s-top { flex-wrap: wrap; padding: 8px 12px 14px; gap: 8px; }
+  .s-brand { font-size: 17px; }
+  .s-btn { padding: 6px 11px; font-size: 13px; }
+  .s-actions { margin-left: auto; }
+  .led { order: 3; flex-basis: 100%; max-width: none; justify-content: center; font-size: 12px; margin: 0; padding: 5px 10px; }
+  .js .chapter { top: 98px; left: 12px; width: calc(100vw - 24px); padding: 16px 18px; border-radius: 18px; font-size: 15px; max-height: calc(100vh - 160px); }
+  .js .chapter.feature { top: 96px; grid-template-columns: 1fr; gap: 10px; }
+  h2 { font-size: 22px; }
+  .stats b { font-size: 30px; }
+  .race-row { grid-template-columns: 64px 1fr; }
+  .race-end { grid-column: 2; text-align: left; min-width: 0; margin: 2px 0 4px; }
+  .race-legs { margin-left: 74px; }
+  .people { gap: 3px; }
+  .phone { --pw: 160px; --ph: 320px; --ps: .3692; border-radius: 26px; padding: 8px; }
+  .phone iframe { height: calc((var(--ph) - 16px) / var(--ps)); }
+  .chips { margin: 8px 0 10px; gap: 6px; }
+  .chips li { font-size: 12px; padding: 4px 9px; }
+  .result b { font-size: 24px; }
+  .s-recs li { padding: 4px 0; font-size: 13px; }
+  .linebar { bottom: 12px; width: calc(100vw - 40px); }
+}
+@media (max-width: 699px) and (max-height: 760px) {
+  .feature .words > p:not(.result) { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-cue i { animation: none; }
+  .race-end, .s-recs li, .people i, .lb-stop span { transition: none; }
+}
