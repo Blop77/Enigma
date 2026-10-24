@@ -2,7 +2,7 @@
 'use strict';
 const assert = require('assert');
 const P = require('../js/planner.js');
-const { LINES, STATIONS, LANDMARKS, CONFIG, FARE_CODES, FARE_CHART, FARE_ASYMMETRIC, STATION_CODES, STATION_ALIASES, CALIBRATION_TRIPS } = require('../js/data.js');
+const { LINES, STATIONS, STATION_ACCESS, LANDMARKS, CONFIG, FARE_CODES, FARE_CHART, FARE_ASYMMETRIC, STATION_CODES, STATION_ALIASES, CALIBRATION_TRIPS } = require('../js/data.js');
 
 let passed = 0;
 function test(name, fn) {
@@ -72,6 +72,57 @@ test('Line 3 station gaps and end-to-end time match its planned data', () => {
   const r = P.route('megapolis-circle', 'civil-court', { planned: true });
   assert.ok(Math.abs(r.km - LINES.line3.lengthKm) < 1e-9);
   assert.ok(Math.abs(r.rideMin - LINES.line3.runMin) < 1e-9);
+});
+
+test('Every station has an accessibility placeholder', () => {
+  Object.keys(STATIONS).forEach(id => assert.ok(STATION_ACCESS[id], id));
+});
+
+test('Avoiding District Court blocks a cross-line step-free route but not a through ride', () => {
+  assert.strictEqual(P.route('pcmc', 'ramwadi', { avoid: ['civil-court'] }), null);
+  const trip = P.planTrip({ stationId: 'pcmc' }, { stationId: 'ramwadi' },
+    { date: at(9), accessible: true, avoid: ['civil-court'] });
+  assert.strictEqual(trip.best, null);
+  assert.strictEqual(trip.noStepFree, true);
+  const through = P.route('vanaz', 'ramwadi', { avoid: ['civil-court'] });
+  assert.ok(through);
+  assert.strictEqual(through.transfers, 0);
+});
+
+test('An avoided station origin boards from another station with a first-mile leg', () => {
+  const trip = P.planTrip({ stationId: 'pmc' }, { stationId: 'ramwadi' },
+    { date: at(9), accessible: true, avoid: ['pmc'] });
+  assert.ok(trip.best);
+  assert.notStrictEqual(trip.best.route.from, 'pmc');
+  assert.notStrictEqual(trip.best.firstMile.mode, 'none');
+});
+
+test('Accessible interchange adds the configured transfer time and keeps fares', () => {
+  const normal = P.planTrip({ stationId: 'pcmc' }, { stationId: 'ramwadi' }, { date: at(9) });
+  const accessible = P.planTrip({ stationId: 'pcmc' }, { stationId: 'ramwadi' },
+    { date: at(9), accessible: true, avoid: [] });
+  assert.strictEqual(accessible.best.transferMin - normal.best.transferMin, CONFIG.access.extraTransferMin);
+  const cross = P.planTrip({ stationId: 'pcmc' }, { stationId: 'swargate' },
+    { date: at(9), accessible: true, avoid: [] });
+  assert.strictEqual(cross.best.ticket.base, P.chartFare('pcmc', 'swargate'));
+});
+
+test('Accessible first/last-mile walking is slower and long hops always use an auto', () => {
+  const walk = P.mileLeg(CONFIG.access.maxWalkKm, 'walk', false, { accessible: true });
+  assert.strictEqual(walk.mode, 'walk');
+  assert.ok(walk.min > P.mileLeg(CONFIG.access.maxWalkKm, 'walk', false).min);
+  ['walk', 'cycle'].forEach(mode => {
+    assert.strictEqual(P.mileLeg(0.8, mode, false, { accessible: true }).mode, 'auto');
+  });
+});
+
+test('Accessible routing can include planned Line 3 and change at District Court', () => {
+  const trip = P.planTrip({ stationId: 'hinjewadi' }, { stationId: 'ramwadi' },
+    { date: at(9), accessible: true, planned: true, avoid: [] });
+  assert.ok(trip.best);
+  assert.deepStrictEqual(trip.best.route.legs.map(leg => leg.line), ['line3', 'aqua']);
+  const finalStop = trip.best.route.legs[0].stations[trip.best.route.legs[0].stations.length - 1];
+  assert.strictEqual(finalStop, 'civil-court');
 });
 
 test('Line lengths add up to the published route length', () => {

@@ -6,7 +6,7 @@ Built for the Pune Metro hackathon · theme **Urban mobility**.
 
 ### ▶ [Live demo: blop77.github.io/metro-mitra](https://blop77.github.io/metro-mitra/)
 
-![Urban mobility](https://img.shields.io/badge/theme-urban%20mobility-8e3fa8) ![No build step](https://img.shields.io/badge/build-none-555) ![Tests](https://img.shields.io/badge/tests-60%20passing-2f9e5f) ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
+![Urban mobility](https://img.shields.io/badge/theme-urban%20mobility-8e3fa8) ![No build step](https://img.shields.io/badge/build-none-555) ![Tests](https://img.shields.io/badge/tests-69%20passing-2f9e5f) ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
 
 [![The Gap Map with five suggested feeders switched on](screenshot.png)](https://blop77.github.io/metro-mitra/)
 
@@ -54,6 +54,7 @@ The Gap Map can include the planned Hinjewadi–Shivajinagar Line 3 as a scenari
 - Total cost including first and last mile, and an **honest verdict**: it says *take an auto* when the metro doesn't pay off
 - Metro vs auto vs cab: time, ₹, CO₂
 - Concession fares: student 30% off; Pune card / e-ticket 10% off on weekdays, 30% on weekends
+- **Accessible mode:** larger controls and a step-free routing option with slower walking and extra station time; lift data are unverified placeholders until checked against Maha-Metro accessibility information
 - Live service status, interactive network map, shareable trip links
 - **My metro savings:** log the trips you take; see ₹ and CO₂ saved this month
 - **Shareable savings card:** create a 1080×1080 English or Marathi PNG with this month's totals, ready to share or download

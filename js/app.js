@@ -6,13 +6,14 @@
 (function () {
   'use strict';
 
-  const { STATIONS, STATIONS_MR, STATION_ALIASES, LINES, LANDMARKS, LANDMARKS_MR, CONFIG } = MetroData;
+  const { STATIONS, STATIONS_MR, STATION_ACCESS, STATION_ALIASES, LINES, LANDMARKS, LANDMARKS_MR, CONFIG } = MetroData;
   const P = MetroPlanner, I = I18N, t = I18N.t;
   const Savings = MetroSavings;
   const OPEN_STATION_IDS = Object.keys(STATIONS).filter((id) => P.linesAt(id).length > 0);
   const OPEN_LINE_IDS = Object.keys(LINES).filter((id) => LINES[id].status !== 'planned');
   const STORE_KEY = 'metromitra-v1';
   const LANG_KEY = 'metromitra-lang';
+  const ACCESS_KEY = 'metromitra-accessible';
   const MILE_ICON = { walk: '🚶', auto: '🛺', cycle: '🚲' };
 
   const $ = (sel) => document.querySelector(sel);
@@ -25,6 +26,7 @@
   let cardPreviewVisible = false;
   let cardPreviewUrl = null;
   let cardRenderId = 0;
+  let accessibleOn = false;
 
   /* ------------------------------------------------------------------
    * Places: stations + landmarks, resolved from free text in either
@@ -149,6 +151,8 @@
     const b = trip.best, r = b.route, hw = trip.service.headwayMin;
     let tm = 0, html = '';
 
+    if (trip.accessible) html += step('♿', t('access.route'), '', clock(date, tm));
+
     if (b.firstMile.mode !== 'none') {
       html += step(MILE_ICON[b.firstMile.mode], t('step.first.' + b.firstMile.mode, { place: esc(stName(r.from)) }),
         mileDetail(b.firstMile), clock(date, tm));
@@ -157,18 +161,20 @@
 
     const tk = b.ticket;
     const fare = t('step.ticket', { fare: fmtRs(tk.fare) }) + (tk.pct ? t('step.discount', { pct: tk.pct, base: fmtRs(tk.base) }) : '');
+    const entryMin = CONFIG.stationEntryMin + (trip.accessible ? CONFIG.access.extraEntryMin : 0);
     const wait = trip.service.startsInMin
       ? fare + t('step.firstTrain', { time: CONFIG.firstTrain })
-      : fare + t('step.wait', { min: CONFIG.stationEntryMin, hw });
+      : fare + t('step.wait', { min: entryMin, hw });
     html += step('🎫', t('step.enter', { station: esc(stName(r.from)) }), wait, clock(date, tm));
     tm += b.waitMin;
 
     r.legs.forEach((leg, i) => {
       const L = LINES[leg.line];
       if (i > 0) {
+        const transferMin = CONFIG.transferMin + hw / 2 + (trip.accessible ? CONFIG.access.extraTransferMin : 0);
         html += step('⇄', t('step.change', { station: esc(stName(leg.stations[0])) }),
-          t('step.changeHow', { line: I.line(leg.line), min: Math.round(CONFIG.transferMin + hw / 2) }), clock(date, tm));
-        tm += CONFIG.transferMin + hw / 2;
+          t('step.changeHow', { line: I.line(leg.line), min: Math.round(transferMin) }), clock(date, tm));
+        tm += transferMin;
       }
       const chip = '<span class="chip" style="background:' + L.color + '">' + I.line(leg.line) + '</span>';
       html += step(L.short.replace('Line ', 'L'),
@@ -217,7 +223,7 @@
       html += '<p class="verdict ' + trip.verdict.kind + '">' + verdictText(trip.verdict, trip) + '</p>';
       html += timeline(trip, date);
     } else {
-      html += '<p class="verdict road">' + t('verdict.same') + '</p>';
+      html += '<p class="verdict road">' + t(trip.noStepFree ? 'access.noRoute' : 'verdict.same') + '</p>';
     }
     html += '<h3>' + t('res.compare') + '</h3>' + compareTable(trip);
     if (trip.alternatives.length) {
@@ -323,6 +329,23 @@
         tx.textContent = tag + ' · ' + placeName(p);
       });
     }
+  }
+
+  function accessibleTouchRadius() {
+    return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--access-tap-size')) / 2;
+  }
+
+  // Choose the nearest marker when enlarged station touch targets overlap.
+  function nearestMapStation(e) {
+    const rect = mapEl.getBoundingClientRect(), scale = rect.width / 600;
+    if (!scale) return null;
+    const x = (e.clientX - rect.left) / scale, y = (e.clientY - rect.top) / scale;
+    let best = null, bestDistance = Infinity;
+    OPEN_STATION_IDS.forEach((id) => {
+      const p = sxy(id), distance = Math.hypot(p[0] - x, p[1] - y) * scale;
+      if (distance < bestDistance) { best = id; bestDistance = distance; }
+    });
+    return bestDistance <= accessibleTouchRadius() ? best : null;
   }
 
   function lineAttrs(a, b) { return { x1: a[0], y1: a[1], x2: b[0], y2: b[1], class: 'mile' }; }
@@ -475,13 +498,17 @@
     if (from.stationId && from.stationId === to.stationId) return showError('err.same');
 
     const date = departure();
-    const trip = P.planTrip(from, to, { date, mile: mile(), pass: pass() });
+    const trip = P.planTrip(from, to, { date, mile: mile(), pass: pass(), accessible: accessibleOn,
+      avoid: accessibleOn ? avoidedStations() : [] });
     renderService(date);
     renderResults(trip, date);
     drawMap(trip);
     save();
     if (!isMyLocation(fromIn.value)) history.replaceState(null, '', '#' + hashFor());
-    if (!quiet && window.matchMedia('(max-width: 899px)').matches) resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (!quiet && window.matchMedia('(max-width: 899px)').matches) {
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      resultsEl.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+    }
   }
 
   function hashFor() {
@@ -502,7 +529,10 @@
   }
 
   function save() {
-    try { localStorage.setItem(STORE_KEY, JSON.stringify({ mile: mile(), pass: pass(), trips })); } catch (e) { /* private mode */ }
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify({ mile: mile(), pass: pass(), trips }));
+      localStorage.setItem(ACCESS_KEY, String(accessibleOn));
+    } catch (e) { /* private mode */ }
   }
 
   function load() {
@@ -511,7 +541,19 @@
       if (s.mile) setMile(s.mile);
       if (s.pass && CONFIG.concessions[s.pass]) $('#pass').value = s.pass;
       if (Array.isArray(s.trips)) trips = s.trips;
+      accessibleOn = localStorage.getItem(ACCESS_KEY) === 'true';
     } catch (e) { /* storage blocked or corrupt: start fresh */ }
+    renderAccessibilityToggle();
+  }
+
+  function renderAccessibilityToggle() {
+    document.documentElement.classList.toggle('accessible', accessibleOn);
+    const button = $('#access-toggle');
+    if (button) button.setAttribute('aria-pressed', String(accessibleOn));
+  }
+
+  function avoidedStations() {
+    return Object.keys(STATION_ACCESS).filter((id) => STATION_ACCESS[id] && STATION_ACCESS[id].lift === false);
   }
 
   function locate() {
@@ -602,6 +644,19 @@
     drawMap(null);
 
     $('#lang-toggle').addEventListener('click', () => setLanguage(I.lang === 'mr' ? 'en' : 'mr', true));
+    $('#access-toggle').addEventListener('click', () => {
+      accessibleOn = !accessibleOn;
+      renderAccessibilityToggle();
+      save();
+      document.dispatchEvent(new CustomEvent('mm:access', { detail: accessibleOn }));
+      if (!resultsEl.hidden) plan(true);
+      else drawMap(null);
+    });
+    mapEl.addEventListener('click', (e) => {
+      if (!accessibleOn || (e.target.closest && e.target.closest('.stn'))) return;
+      const id = nearestMapStation(e);
+      if (id) pickStation(id);
+    });
     form.addEventListener('submit', (e) => { e.preventDefault(); plan(); });
     $('#swap').addEventListener('click', () => {
       [fromIn.value, toIn.value] = [toIn.value, fromIn.value];

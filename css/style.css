@@ -50,6 +50,8 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html { -webkit-text-size-adjust: 100%; }
+html.accessible { --access-tap-size: 44px; }
+html.accessible body { font-size: 18px; }
 body {
   margin: 0;
   background: var(--bg);
@@ -80,6 +82,11 @@ h1, h2, h3 { margin: 0; line-height: 1.2; }
   padding: 6px 14px; font-size: 13px; font-weight: 700; cursor: pointer;
 }
 .lang-btn:hover { background: var(--brand); color: var(--brand-ink); }
+.access-btn {
+  border: 1px solid var(--aqua); color: var(--ink); background: var(--panel); border-radius: 999px;
+  padding: 6px 12px; font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.access-btn[aria-pressed="true"] { background: var(--brand); color: var(--brand-ink); }
 .service {
   font-size: 13px; padding: 6px 12px; border-radius: 999px; background: var(--panel);
   border: 1px solid var(--line);
@@ -129,6 +136,7 @@ input[list], input[type=time], select {
   background: var(--bg);
 }
 input:focus-visible, button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+html.accessible :focus-visible { outline: 3px solid var(--brand); outline-offset: 3px; }
 .icon-btn {
   flex: none; width: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg);
   cursor: pointer; font-size: 18px;
@@ -213,6 +221,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid var(--brand); out
 #map .stn.sel { fill: var(--ink); }
 #map .lbl { font-size: 11px; fill: var(--ink); paint-order: stroke; stroke: var(--panel); stroke-width: 3px; pointer-events: none; }
 @media (max-width: 600px) { #map .lbl { font-size: 17px; stroke-width: 4px; } }
+html.accessible #map .lbl, html.accessible #gap-map .lbl { font-size: 20px; stroke-width: 5px; }
 #map .pin { stroke: var(--panel); stroke-width: 2; }
 #map .mile { fill: none; stroke: var(--ink); stroke-width: 2; stroke-dasharray: 4 4; opacity: .7; }
 .hint { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
@@ -296,6 +305,29 @@ input:focus-visible, button:focus-visible { outline: 2px solid var(--brand); out
   .panel { box-shadow: none; border: 0; break-inside: avoid; padding: 8px 0; }
   .gap-map-panel { position: static; }
   #gap-map { max-width: 520px; margin: 0 auto; }
+}
+
+html.accessible button { min-height: var(--access-tap-size); }
+html.accessible select, html.accessible input:not([type="radio"]):not([type="checkbox"]) { min-height: var(--access-tap-size); }
+html.accessible input[type="radio"], html.accessible input[type="checkbox"] { width: var(--access-tap-size); height: var(--access-tap-size); }
+html.accessible .seg label { min-height: var(--access-tap-size); }
+html.accessible .seg span { min-height: var(--access-tap-size); display: grid; place-items: center; }
+html.accessible .recs label { min-height: var(--access-tap-size); }
+html.accessible .planned-toggle label { min-height: var(--access-tap-size); }
+html.accessible .field label, html.accessible .field legend, html.accessible .service,
+html.accessible .hint, html.accessible .foot, html.accessible .note, html.accessible .key,
+html.accessible .legend, html.accessible .stat small, html.accessible .step .when,
+html.accessible .chip, html.accessible .error, html.accessible .alt, html.accessible .quick,
+html.accessible .quick button, html.accessible .compare, html.accessible .compare th,
+html.accessible .small-btn, html.accessible .link-btn, html.accessible .trip-log,
+html.accessible .savings .empty, html.accessible .cell-table td small,
+html.accessible .report-table td small { font-size: 15px; }
+html.accessible .results h3, html.accessible .gap-side h3 { font-size: 17px; }
+html.accessible #map .stn:focus-visible, html.accessible #gap-map .stn:focus-visible { stroke: var(--brand); stroke-width: 6; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .bar i { transition: none; }
 }
 .hub-key { width: 8px !important; height: 8px !important; transform: rotate(45deg); background: var(--ink); }
 .planned-toggle { display: flex; align-items: center; }

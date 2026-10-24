@@ -56,7 +56,6 @@ Each task is self-contained. Paste one as a prompt.
 
 1. **PMPML feeder buses from GTFS.** Load PMPML stops (GTFS `stops.txt`, converted to a small JSON file in `data/`) and treat any bus stop within 400 m of a metro station as an existing feeder in the Gap Map, so the map shows today's reality and the simulator only suggests new feeders.
 2. **Crowd and lift reports.** Let riders report "crowded / lift not working / escalator not working" at a station. Store reports in `localStorage` for the demo, show them as icons on the planner map, and warn in the timeline when a step uses an affected station.
-3. **Accessibility mode.** A toggle that avoids stations flagged without lifts (add a `lift` flag in `data.js`), uses larger text, and adds 3 min per interchange.
 
 ## Definition of done
 

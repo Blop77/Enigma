@@ -98,6 +98,28 @@
     'agriculture-college': 'ॲग्रीकल्चर कॉलेज', 'shivajinagar': 'शिवाजीनगर'
   };
 
+  // Unverified placeholders: every station currently has a lift. Update these
+  // only from Maha-Metro's published accessibility information.
+  var STATION_ACCESS = {
+    'pcmc': { lift: true }, 'sant-tukaram-nagar': { lift: true }, 'bhosari': { lift: true },
+    'kasarwadi': { lift: true }, 'phugewadi': { lift: true }, 'dapodi': { lift: true },
+    'bopodi': { lift: true }, 'khadki': { lift: true }, 'shivaji-nagar': { lift: true },
+    'civil-court': { lift: true }, 'budhwar-peth': { lift: true }, 'mandai': { lift: true },
+    'swargate': { lift: true }, 'vanaz': { lift: true }, 'anand-nagar': { lift: true },
+    'ideal-colony': { lift: true }, 'nal-stop': { lift: true }, 'garware-college': { lift: true },
+    'deccan': { lift: true }, 'sambhaji-udyan': { lift: true }, 'pmc': { lift: true },
+    'mangalwar-peth': { lift: true }, 'pune-station': { lift: true }, 'ruby-hall': { lift: true },
+    'bund-garden': { lift: true }, 'yerawada': { lift: true }, 'kalyani-nagar': { lift: true },
+    'ramwadi': { lift: true }, 'megapolis-circle': { lift: true }, 'embassy-quadron': { lift: true },
+    'dohler': { lift: true }, 'infosys-phase-ii': { lift: true }, 'wipro-phase-ii': { lift: true },
+    'pall-india': { lift: true }, 'shivaji-chowk': { lift: true }, 'hinjewadi': { lift: true },
+    'wakad-chowk': { lift: true }, 'balewadi-stadium': { lift: true }, 'nicmar': { lift: true },
+    'ram-nagar': { lift: true }, 'laxmi-nagar': { lift: true }, 'balewadi-phata': { lift: true },
+    'baner-gaon': { lift: true }, 'baner': { lift: true }, 'krishi-anusandhan': { lift: true },
+    'sakal-nagar': { lift: true }, 'pune-university': { lift: true }, 'rbi': { lift: true },
+    'agriculture-college': { lift: true }, 'shivajinagar': { lift: true }
+  };
+
   // Stations in running order. Shared ids are interchanges.
   // lengthKm and runMin are the end-to-end distance and time from the official
   // timetable; station gaps and running speed are scaled to match them.
@@ -295,6 +317,9 @@
     peakWindows: [['08:00', '11:00'], ['16:00', '20:00']],
     stationEntryMin: 2.5,    // gate to platform at elevated stations: 2–3 min (team, Vanaz)
 
+    // Accessible-mode estimates; station lift status remains unverified above.
+    access: { extraTransferMin: 3, extraEntryMin: 2, walkKmh: 3, maxWalkKm: 0.5 },
+
     // Roads. Straight-line distance is multiplied by this to estimate road distance.
     roadFactor: 1.39,        // fitted to CALIBRATION_TRIPS (1.32–1.48)
     walkKmh: 4.5,
@@ -357,7 +382,8 @@
     'Fergusson College', 'Savitribai Phule Pune University', 'COEP', 'MIT-WPU, Kothrud'
   ];
 
-  var MetroData = { STATIONS: STATIONS, STATIONS_MR: STATIONS_MR, LINES: LINES, LANDMARKS: LANDMARKS,
+  var MetroData = { STATIONS: STATIONS, STATIONS_MR: STATIONS_MR, STATION_ACCESS: STATION_ACCESS,
+                    LINES: LINES, LANDMARKS: LANDMARKS,
                     LANDMARKS_MR: LANDMARKS_MR, HUBS: HUBS, CONFIG: CONFIG,
                     FARE_CODES: FARE_CODES, FARE_CHART: FARE_CHART, FARE_ASYMMETRIC: FARE_ASYMMETRIC,
                     STATION_CODES: STATION_CODES, STATION_ALIASES: STATION_ALIASES,
