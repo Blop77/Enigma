@@ -2,7 +2,7 @@
 'use strict';
 const assert = require('assert');
 const P = require('../js/planner.js');
-const { LINES, STATIONS, LANDMARKS, CONFIG, FARE_CODES, FARE_CHART, FARE_ASYMMETRIC, STATION_CODES, STATION_ALIASES } = require('../js/data.js');
+const { LINES, STATIONS, LANDMARKS, CONFIG, FARE_CODES, FARE_CHART, FARE_ASYMMETRIC, STATION_CODES, STATION_ALIASES, CALIBRATION_TRIPS } = require('../js/data.js');
 
 let passed = 0;
 function test(name, fn) {
@@ -148,7 +148,34 @@ test('Trip cost uses the discounted fare', () => {
 
 test('Auto fare: minimum fare covers the first 1.5 km', () => {
   assert.strictEqual(P.autoFare(1), CONFIG.auto.baseFare);
-  assert.strictEqual(P.autoFare(2.5), CONFIG.auto.baseFare + CONFIG.auto.perKm);
+  // Meters show whole rupees; ₹17.14/km makes the exact fare ₹43.14.
+  assert.strictEqual(P.autoFare(2.5), Math.round(CONFIG.auto.baseFare + CONFIG.auto.perKm));
+});
+
+test('Auto night surcharge: +25% from midnight to 5 AM only', () => {
+  const day = P.autoFare(10, at(14)), night = P.autoFare(10, at(1));
+  assert.strictEqual(P.autoFare(10), day, 'no date means the day rate');
+  assert.strictEqual(night, Math.round((CONFIG.auto.baseFare + (10 - CONFIG.auto.baseKm) * CONFIG.auto.perKm) * 1.25));
+  assert.strictEqual(P.autoFare(10, at(5)), day, 'surcharge ends at 5 AM');
+});
+
+test('Road model reproduces the team\'s real trips', () => {
+  const where = (name) => {
+    const l = LANDMARKS.find((x) => x[0] === name);
+    if (l) return { lat: l[1], lng: l[2] };
+    const id = Object.keys(STATIONS).find((k) => STATIONS[k][0] === name);
+    return { lat: STATIONS[id][1], lng: STATIONS[id][2] };
+  };
+  const near = (got, want, tol, what) => assert.ok(Math.abs(got - want) / want <= tol, what + ': ' + got.toFixed(1) + ' vs ' + want);
+  CALIBRATION_TRIPS.forEach((trip) => {
+    const label = trip.from + ' → ' + trip.to;
+    const km = P.roadKm(where(trip.from), where(trip.to));
+    near(km, trip.km, 0.05, label + ' km');
+    near(P.autoFare(km), trip.auto, 0.05, label + ' auto ₹');
+    near(P.cabFare(km), trip.cab, 0.05, label + ' cab ₹');
+    near(km / CONFIG.roadKmhPeak * 60, trip.peakMin, 0.1, label + ' 9 AM min');
+    near(km / CONFIG.roadKmhOffPeak * 60, trip.offMin, 0.1, label + ' 2 PM min');
+  });
 });
 
 test('Peak hours and service window', () => {

@@ -6,8 +6,11 @@
  *   - service hours, peak hours, frequencies, end-to-end times and distances:
  *     Pune Metro timetable "W.E.F. 15th August 2025"
  *   - fares: Maha-Metro station-to-station fare chart (FARE_CHART below)
+ *   - auto meter tariff: Pune RTA official meter rates
+ * Calibrated on team-collected trips (CALIBRATION_TRIPS): road distance factor,
+ * road speeds, cab fares, auto wait, station entry and interchange times.
  * Still ESTIMATES: station coordinates (entered by hand, good to ~200 m),
- * auto/cab tariffs, road speeds, emission factors and the feeder model.
+ * emission factors and the feeder model.
  * Everything tunable lives here so the engines never change when numbers do.
  *
  * Works in the browser (window.MetroData) and in Node (module.exports).
@@ -231,28 +234,32 @@
 
     // Metro operations.
     dwellMin: 0.5,           // stop time at each intermediate station (running speed comes from LINES.runMin)
-    transferMin: 4,          // walking between platforms at an interchange
+    transferMin: 4,          // District Court interchange walk: 3–5 min (team)
     firstTrain: '06:00',
     lastTrain: '23:00',
     peakHeadwayMin: 6,
     offPeakHeadwayMin: 10,
     peakWindows: [['08:00', '11:00'], ['16:00', '20:00']],
-    stationEntryMin: 3,      // security check, ticket, reaching the platform
+    stationEntryMin: 2.5,    // gate to platform at elevated stations: 2–3 min (team, Vanaz)
 
     // Roads. Straight-line distance is multiplied by this to estimate road distance.
-    roadFactor: 1.3,
+    roadFactor: 1.37,        // fitted to CALIBRATION_TRIPS (1.38 and 1.35)
     walkKmh: 4.5,
     cycleKmh: 13,
-    roadKmhOffPeak: 22,
-    roadKmhPeak: 14,
+    roadKmhOffPeak: 21.4,    // 25 km in 70 min at 2 PM (CALIBRATION_TRIPS)
+    roadKmhPeak: 13.6,       // 25 km in 110 min at 9 AM (CALIBRATION_TRIPS)
 
     // First/last mile: walk anything shorter than this (km of road).
     maxWalkKm: 1.0,
     // ...and cycle up to this far when the rider picks cycling; beyond it, take an auto.
     maxCycleKm: 5,
 
-    auto: { baseFare: 26, baseKm: 1.5, perKm: 18, waitMin: 4 },
-    cab:  { baseFare: 60, perKm: 15, waitMin: 6 },
+    // Auto: Pune RTA meter tariff. App autos (Uber/Ola) often charge ₹18–21/km, so
+    // using the meter rate keeps the metro's savings conservative.
+    auto: { baseFare: 26, baseKm: 1.5, perKm: 17.14, waitMin: 4,       // wait near Vanaz: 3–5 min (team)
+            night: { pct: 25, from: '00:00', to: '05:00' } },
+    // Cab (Uber Go / Ola Mini): fitted to the team's quotes in CALIBRATION_TRIPS.
+    cab:  { baseFare: 40, perKm: 25, waitMin: 6 },
 
     // Grams of CO2 per passenger-km.
     co2: { metro: 15, auto: 70, cab: 150, walk: 0, cycle: 0, feeder: 40 },
@@ -270,6 +277,14 @@
     bounds: { minLat: 18.40, maxLat: 18.72, minLng: 73.68, maxLng: 74.02 }
   };
 
+  // Real trips collected by the team (Oct 2026) that the road model is calibrated on.
+  // from/to are LANDMARKS / station names; km is road distance; auto is the meter
+  // fare, cab an Uber Go / Ola Mini median; peakMin/offMin are car times at 9 AM / 2 PM.
+  var CALIBRATION_TRIPS = [
+    { from: 'MIT-WPU, Kothrud', to: 'Pune Airport', km: 16.5, auto: 285, cab: 450, peakMin: 70, offMin: 45 },
+    { from: 'MIT-WPU, Kothrud', to: 'Pune Railway Station', km: 8.5, auto: 145, cab: 250, peakMin: 40, offMin: 25 }
+  ];
+
   // Where Pune travels to every day: jobs, colleges, transport hubs. Names refer
   // to a station or a landmark above. The Gap Map measures access to these.
   var HUBS = [
@@ -281,7 +296,8 @@
   var MetroData = { STATIONS: STATIONS, STATIONS_MR: STATIONS_MR, LINES: LINES, LANDMARKS: LANDMARKS,
                     LANDMARKS_MR: LANDMARKS_MR, HUBS: HUBS, CONFIG: CONFIG,
                     FARE_CODES: FARE_CODES, FARE_CHART: FARE_CHART, FARE_ASYMMETRIC: FARE_ASYMMETRIC,
-                    STATION_CODES: STATION_CODES, STATION_ALIASES: STATION_ALIASES };
+                    STATION_CODES: STATION_CODES, STATION_ALIASES: STATION_ALIASES,
+                    CALIBRATION_TRIPS: CALIBRATION_TRIPS };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = MetroData;
   else root.MetroData = MetroData;

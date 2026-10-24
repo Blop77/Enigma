@@ -22,22 +22,22 @@ Nobody can see where this happens. Ridership numbers say *how many* people use a
 
 - **Splits Pune into ~0.9 km squares.** For every square and each of 12 major hubs (Hinjewadi, Kharadi, Magarpatta, Bhosari MIDC, the railway station, Swargate, the airport, Camp, Fergusson, SPPU, COEP, MIT-WPU), it plans the trip door to door and compares it with an auto.
 - **Colours each square:** green where the metro beats an auto, amber where it's cheaper but slower, red where an auto is simply better.
-- **Gives one headline number:** *"At peak hour, the metro beats an auto from 33% of Pune's area near the metro."*
-- **Simulates feeders** (₹10 e-bus or shared e-rickshaw from a station, up to 6 km). It tests a feeder at every station and greedily picks the five that improve access the most: **33% → 51%**.
+- **Gives one headline number:** *"At peak hour, the metro beats an auto from 42% of Pune's area near the metro."*
+- **Simulates feeders** (₹10 e-bus or shared e-rickshaw from a station, up to 6 km). It tests a feeder at every station and greedily picks the five that improve access the most: **42% → 61%**.
 - **Lets you place feeders yourself:** tap any station to add or remove one and the map updates instantly.
 - **City report:** ranks all 12 hubs by metro access, with the single best feeder for each. Print it or save it as a PDF to hand to decision-makers.
 - **Tap any square** to see every trip from there (route, time and cost vs an auto), then open it in the trip planner.
 
-What the model finds (peak hour, with the official fares and timetable below):
+What the model finds (peak hour; official fares, timetable and auto tariff, road model calibrated on real trips):
 
 | Finding | Number |
 |---|---|
-| Worst-served hub | **Hinjewadi**: the metro wins from only 19% of the area (Line 3 can't come soon enough) |
-| Best-served hub | **COEP**: 74% |
+| Worst-served hub | **Hinjewadi**: the metro wins from only 28% of the area (Line 3 can't come soon enough) |
+| Best-served hubs | **Pune Railway Station** and **COEP**: 81% |
 | Best single feeder for the city | **Ramwadi**: serves Kharadi, Viman Nagar and the airport |
-| One feeder at Kalyani Nagar, for Magarpatta | Area where an auto is better: 35% → 9% |
-| Opening Range Hill station (built, not yet open) | Metro wins for SPPU trips: 25% → 37%; city-wide: 33% → 38% |
-| Five suggested feeders | Area where the metro wins: **33% → 51%** |
+| One feeder at Kalyani Nagar, for the Airport | Area where an auto is better: 26% → 11% |
+| Opening Range Hill station (built, not yet open) | Metro wins for SPPU trips: 31% → 46%; city-wide: 42% → 47% |
+| Five suggested feeders | Area where the metro wins: **42% → 61%** |
 
 ### 🌐 English / मराठी
 
@@ -83,11 +83,13 @@ tests/           Engine and translation tests (Node, no dependencies)
 | **Stations** | 13 open on Line 1 (Range Hill not yet open), 16 on Line 2 | **Maha-Metro project profile** |
 | **Hours, frequency** | 06:00–23:00; every 6 min at peak (8–11 AM, 4–8 PM), every 10 min otherwise | **Official timetable, w.e.f. 15 Aug 2025** |
 | **End-to-end times** | PCMC–Swargate 34 min / 17.5 km; Vanaz–Ramwadi 37 min / 14.5 km (speeds calibrated to match) | **Official timetable** |
+| **Auto fare** | ₹26 for the first 1.5 km, ₹17.14/km after, +25% from midnight to 5 AM | **Pune RTA official meter tariff** (app autos charge more, so metro savings shown are conservative) |
+| Road model | Road distance = 1.37 × straight line; 13.6 km/h at 9 AM, 21.4 km/h at 2 PM; cab ₹40 + ₹25/km; auto wait 4 min; station entry 2.5 min; interchange 4 min | Calibrated on team-collected trips (`CALIBRATION_TRIPS`); a test keeps the model within 5–10% of them |
 | Concessions | Student 30% daily; card/e-ticket 10% weekdays, 30% weekends | News reports 2023–25 |
 | Station coordinates, Marathi names | hand-entered | Approximate; please check against signage |
-| Auto / cab tariffs, road speeds, CO₂, feeder model | see `CONFIG` | Estimates |
+| CO₂, feeder model | see `CONFIG` | Estimates |
 
-> ⚠️ Fares, stations and timings are from official Maha-Metro material; the rest is estimated. Everything lives in `js/data.js`, so each fix is a one-line edit, and the Gap Map and the planner both update. Search also understands the fare chart's station names (Paud Phata, S.N.D.T. College, R.T.O., Kasba Peth, Nashik Phata, Mahatma Phule Mandai, Civil Court).
+> ⚠️ Metro fares, stations and timings are from official Maha-Metro material, the auto tariff from Pune RTA, and the road model is calibrated on real trips; coordinates, CO₂ and the feeder model are estimated. Everything lives in `js/data.js`, so each fix is a one-line edit, and the Gap Map and the planner both update. Search also understands the fare chart's station names (Paud Phata, S.N.D.T. College, R.T.O., Kasba Peth, Nashik Phata, Mahatma Phule Mandai, Civil Court).
 
 ## Run it
 
@@ -105,10 +107,10 @@ node tests/i18n.test.js        # every string translated, every key used exists
 
 ## Demo script (3 minutes)
 
-1. **The problem (Gap Map, all hubs, peak).** "The metro beats an auto from only 33% of Pune. Amber is everywhere: the metro is cheaper, but the last mile makes it slower."
-2. **Pick Hinjewadi.** The map turns red: 19%. "This is why Line 3 matters."
+1. **The problem (Gap Map, all hubs, peak).** "The metro beats an auto from only 42% of Pune. Amber is everywhere: the metro is cheaper, but the last mile makes it slower."
+2. **Pick Hinjewadi.** The map turns red: 28%. "This is why Line 3 matters."
 3. **Pick Kharadi.** Red around EON IT Park. Tap a red square to show the 5 km auto from Ramwadi that kills the trip.
-4. **Add the suggested feeders.** Watch the map turn green: 33% → 51%. Then tap a station to add a feeder by hand.
+4. **Add the suggested feeders.** Watch the map turn green: 42% → 61%. Then tap a station to add a feeder by hand.
 5. **City report.** "Here is the one feeder each hub needs." Print it as a PDF for the judges.
 6. **Open in trip planner** from a square. Show the honest verdict, switch to a *Student* ticket, then tap *I took this trip*.
 7. **Airplane mode.** Plan again: it still works offline.
