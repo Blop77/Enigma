@@ -180,7 +180,9 @@ node tests/story.test.js       # the story's numbers match the planner and the G
 
 ## Working with Codex (optional)
 
-The project is complete without it. If Codex credits are available at the event, [`AGENTS.md`](AGENTS.md) gives Codex the architecture, rules and ready-to-paste tasks (PMPML GTFS feeders, crowd and lift reports). Line 3, the savings card and accessible mode were built this way.
+The project is complete without it. If Codex credits are available at the event, [`AGENTS.md`](AGENTS.md) gives Codex the architecture, rules and ready-to-paste tasks (PMPML GTFS feeders, crowd and lift reports). Line 3, the savings card, accessible mode, and the offline Ask MetroMitra assistant were built with Codex's help.
+
+For **Ask MetroMitra** ([PR #17](https://github.com/Blop77/metro-mitra/pull/17)), OpenAI Codex contributed the pure question-answering engine, connections to the planner, fare chart, timetable, Gap Map and local station reports, the English and Marathi chat UI, intent tests, and offline-cache and documentation updates.
 
 ## License
 
