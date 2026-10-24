@@ -32,6 +32,7 @@ node tests/planner.test.js     # must pass
 node tests/gapmap.test.js      # must pass
 node tests/i18n.test.js        # must pass: catches missing keys and untranslated strings
 node tests/savings.test.js     # savings totals and month filtering
+node tests/reports.test.js     # station reports and expiry
 node tests/share.test.js       # share-link encode/decode
 npx serve .                    # then open http://localhost:3000
 ```

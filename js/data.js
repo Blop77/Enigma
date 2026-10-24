@@ -295,6 +295,7 @@
 
   var CONFIG = {
     savingsCardSize: 1080,
+    reportExpiryMs: 2 * 60 * 60 * 1000,
     // Fallback fare by trip distance (km, inclusive upper bound -> rupees), used only
     // for station pairs missing from FARE_CHART (e.g. a future line).
     fareSlabs: [[1, 10], [2, 15], [4, 20], [8, 25], [16, 30], [Infinity, 35]],
