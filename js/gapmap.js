@@ -7,12 +7,16 @@
  * planner. Red areas are where the metro fails people, usually because the
  * first or last mile is too long or too costly.
  *
- * It then simulates feeder services (cheap e-bus / shared e-rickshaw from a
- * station) and greedily picks the stations where a feeder turns the most of
- * the city green.
+ * Each cell carries its residents (WorldPop 2020, see population.js), so the
+ * headline counts people, not area: a green square of empty hillside matters
+ * less than an amber square in the old city.
  *
- * No DOM code. Works in the browser (window.GapMap, after data.js and
- * planner.js) and in Node (module.exports).
+ * It then simulates feeder services (cheap e-bus / shared e-rickshaw from a
+ * station) and greedily picks the stations where a feeder helps the most
+ * residents.
+ *
+ * No DOM code. Works in the browser (window.GapMap, after data.js,
+ * population.js and planner.js) and in Node (module.exports).
  */
 (function (root) {
   'use strict';
@@ -20,6 +24,7 @@
   var isNode = typeof module !== 'undefined' && module.exports;
   var Data = isNode ? require('./data.js') : root.MetroData;
   var P = isNode ? require('./planner.js') : root.MetroPlanner;
+  var POP = isNode ? require('./population.js') : root.MetroPopulation;
   var STATIONS = Data.STATIONS, LANDMARKS = Data.LANDMARKS, CONFIG = Data.CONFIG;
   var IDS = Object.keys(STATIONS);
   var KIND_SCORE = { metro: 1, tradeoff: 0.5, road: 0 };
@@ -53,7 +58,8 @@
     var rows = Math.round((g.maxLat - g.minLat) / g.step), cols = Math.round((g.maxLng - g.minLng) / g.step);
     for (var r = 0; r < rows; r++) {
       for (var c = 0; c < cols; c++) {
-        var cell = { row: r, col: c, lat: g.maxLat - (r + 0.5) * g.step, lng: g.minLng + (c + 0.5) * g.step };
+        var cell = { row: r, col: c, lat: g.maxLat - (r + 0.5) * g.step, lng: g.minLng + (c + 0.5) * g.step,
+                     people: POP.people[r * POP.cols + c] || 0 };
         cell.near = near(cell, opts);
         if (cell.near[0].km <= g.maxStationKm) cells.push(cell);
       }
@@ -190,13 +196,25 @@
     return score >= 0.67 ? 'good' : score >= 0.34 ? 'mixed' : 'poor';
   }
 
+  // Cells (area) and residents in each band. Percentages leave out cells
+  // with no trip long enough to rate.
   function summary(state, hub) {
-    var s = { good: 0, mixed: 0, poor: 0, none: 0, cells: state.cells.length, km2: cellKm2() };
-    state.cells.forEach(function (c, i) { s[band(cellScore(state, i, hub))]++; });
+    var s = { good: 0, mixed: 0, poor: 0, none: 0, cells: state.cells.length, km2: cellKm2(),
+              people: { good: 0, mixed: 0, poor: 0, none: 0 } };
+    state.cells.forEach(function (c, i) {
+      var b = band(cellScore(state, i, hub));
+      s[b]++;
+      s.people[b] += c.people;
+    });
     var rated = s.good + s.mixed + s.poor || 1;
     s.goodPct = 100 * s.good / rated;
     s.mixedPct = 100 * s.mixed / rated;
     s.poorPct = 100 * s.poor / rated;
+    s.people.rated = s.people.good + s.people.mixed + s.people.poor;
+    var residents = s.people.rated || 1;
+    s.goodPeoplePct = 100 * s.people.good / residents;
+    s.mixedPeoplePct = 100 * s.people.mixed / residents;
+    s.poorPeoplePct = 100 * s.people.poor / residents;
     return s;
   }
 
@@ -234,10 +252,11 @@
 
   function feederList(state) { return Object.keys(state.ctx.feeders); }
 
-  // Greedy plan: repeatedly add the feeder that raises the city's score most.
-  // gainKm2 is the rise in total score times cell area (a red cell turning amber
-  // counts half). Returns [{ station, gainKm2, goodPct, poorPct }] and leaves
-  // state's feeders unchanged.
+  // Greedy plan: repeatedly add the feeder that helps the most residents.
+  // gainPeople is the rise in each cell's score times its residents (a red
+  // cell turning amber counts half); gainKm2 is the same rise times cell area.
+  // Returns [{ station, gainPeople, gainKm2, goodPct, poorPct, goodPeoplePct,
+  // poorPeoplePct }] and leaves state's feeders unchanged.
   function recommend(state, k, hub) {
     hub = hub === undefined ? -1 : hub;
     var start = feederList(state), picks = [];
@@ -246,18 +265,22 @@
       state.stationIds.forEach(function (id) {
         if (state.ctx.feeders[id]) return;
         state.ctx.feeders[id] = true;
-        var gain = 0;
+        var area = 0, people = 0;
         affected(state, id, hub).forEach(function (p) {
           var old = state.trips[p[0]][p[1]], neu = trip(state.cells[p[0]], state.hubs[p[1]], state.ctx);
-          gain += ((neu ? neu.score : 0) - (old ? old.score : 0)) / weight(state, p[0], hub);
+          var rise = ((neu ? neu.score : 0) - (old ? old.score : 0)) / weight(state, p[0], hub);
+          area += rise;
+          people += rise * state.cells[p[0]].people;
         });
         delete state.ctx.feeders[id];
-        if (!best || gain > best.gain) best = { id: id, gain: gain };
+        if (!best || people > best.people) best = { id: id, area: area, people: people };
       });
-      if (!best || best.gain <= 0) break;
+      if (!best || best.people <= 0) break;
       setFeeder(state, best.id, true);
       var after = summary(state, hub);
-      picks.push({ station: best.id, gainKm2: best.gain * cellKm2(), goodPct: after.goodPct, poorPct: after.poorPct });
+      picks.push({ station: best.id, gainPeople: best.people, gainKm2: best.area * cellKm2(),
+                   goodPct: after.goodPct, poorPct: after.poorPct,
+                   goodPeoplePct: after.goodPeoplePct, poorPeoplePct: after.poorPeoplePct });
     }
     // Restore the caller's feeders.
     picks.forEach(function (p) { if (start.indexOf(p.station) === -1) setFeeder(state, p.station, false); });

@@ -350,9 +350,12 @@
     // Gap Map grid: cell size in degrees (~0.9 km), how far from a station a cell
     // may be and still be drawn, and the shortest trip worth considering. minLng
     // reaches Line 3's Hinjewadi end; it is a whole number of steps west of 73.72
-    // so the squares near the open lines stay where they were.
+    // so the squares near the open lines stay where they were. Changing the grid
+    // means rerunning tools/population.py (a test checks they match).
+    // sparsePeople: squares with fewer residents are drawn faded (hills, river,
+    // airfield). minFeederPeople: suggestions helping fewer are not shown.
     gapMap: { minLat: 18.44, maxLat: 18.67, minLng: 73.656, maxLng: 73.97, step: 0.008,
-              maxStationKm: 9, minTripKm: 2.5 },
+              maxStationKm: 9, minTripKm: 2.5, sparsePeople: 1000, minFeederPeople: 5000 },
 
     // Pune's rough bounding box, used to reject far-away GPS fixes.
     bounds: { minLat: 18.40, maxLat: 18.72, minLng: 73.68, maxLng: 74.02 }

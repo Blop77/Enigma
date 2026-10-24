@@ -30,6 +30,9 @@
   const stName = (id) => I.station(id);
   const when = () => t(peak() ? 'gap.when.peak' : 'gap.when.off');
   const km2 = (n) => n.toFixed(1);
+  // Indian style: "61 lakh", "1.1 lakh", or below a lakh "44,400".
+  const people = (n) => n >= 1e5 ? t('num.lakh', { n: n >= 1e6 ? Math.round(n / 1e5) : (n / 1e5).toFixed(1) })
+    : (Math.round(n / 100) * 100).toLocaleString('en-IN');
 
   /* ------------------------------------------------------------------
    * Building and summarising
@@ -84,7 +87,7 @@
     setTimeout(() => {
       if (ticket !== pending) return;      // a newer request replaced this one
       // Drop suggestions too small to be worth running a bus for.
-      recs = G.recommend(bare, 5, hub()).filter((r) => r.gainKm2 >= 0.5);
+      recs = G.recommend(bare, 5, hub()).filter((r) => r.gainPeople >= CONFIG.gapMap.minFeederPeople);
       renderRecs();
     }, 30);
   }
@@ -92,20 +95,22 @@
   function renderHeadline() {
     const now = G.summary(state, hub());
     const feeders = G.feederList(state).length;
-    $('#gap-pct').textContent = Math.round(base.goodPct) + '%';
+    $('#gap-pct').textContent = Math.round(base.goodPeoplePct) + '%';
     $('#gap-after').innerHTML = feeders
-      ? ' <span class="arrow">→</span> <b class="after">' + Math.round(now.goodPct) + '%</b>'
+      ? ' <span class="arrow">→</span> <b class="after">' + Math.round(now.goodPeoplePct) + '%</b>'
       : '';
+    const residents = people(base.people.rated);
     $('#gap-caption').innerHTML = (hub() < 0
-      ? t('gap.caption.all', { n: HUBS.length, when: when() })
-      : t('gap.caption.hub', { hub: M.esc(I.place(HUBS[hub()])), when: when() })) +
-      (feeders ? t('gap.withFeeders', { n: feeders, good: Math.round(now.goodPct),
-        poor0: Math.round(base.poorPct), poor1: Math.round(now.poorPct) }) : '');
+      ? t('gap.caption.all', { people: residents, n: HUBS.length, when: when() })
+      : t('gap.caption.hub', { people: residents, hub: M.esc(I.place(HUBS[hub()])), when: when() })) +
+      (feeders ? t('gap.withFeeders', { n: feeders, good: Math.round(now.goodPeoplePct),
+        poor0: Math.round(base.poorPeoplePct), poor1: Math.round(now.poorPeoplePct) }) : '') +
+      t('gap.byArea', { pct: Math.round(now.goodPct) });
     const delta = $('#gap-planned-delta');
     if (comparison) {
-      const without = G.summary(comparison, hub()).goodPct;
+      const without = G.summary(comparison, hub()).goodPeoplePct;
       const key = hub() < 0 ? 'gap.line3Change.all' : 'gap.line3Change.hub';
-      const vars = { before: Math.round(without), after: Math.round(base.goodPct) };
+      const vars = { before: Math.round(without), after: Math.round(base.goodPeoplePct) };
       if (hub() >= 0) vars.hub = M.esc(I.place(HUBS[hub()]));
       delta.innerHTML = t(key, vars);
       delta.hidden = false;
@@ -114,13 +119,13 @@
       delta.hidden = true;
     }
     const bar = $('#gap-bar').children;
-    bar[0].style.width = now.goodPct + '%';
-    bar[1].style.width = now.mixedPct + '%';
-    bar[2].style.width = now.poorPct + '%';
+    bar[0].style.width = now.goodPeoplePct + '%';
+    bar[1].style.width = now.mixedPeoplePct + '%';
+    bar[2].style.width = now.poorPeoplePct + '%';
   }
 
   function gainHtml(r) {
-    return t('gap.gain', { km2: km2(r.gainKm2) });
+    return t('gap.gain', { people: people(r.gainPeople) });
   }
 
   function renderRecs() {
@@ -168,7 +173,9 @@
     state.cells.forEach((c, i) => {
       const b = G.band(G.cellScore(state, i, h));
       const [x, y] = xy(c);
-      const r = el('rect', { x: x - cw / 2, y: y - ch / 2, width: cw + 0.3, height: ch + 0.3, class: 'cell ' + b + (i === selected ? ' sel' : '') }, cells);
+      const sparse = c.people < g.sparsePeople ? ' sparse' : '';
+      const r = el('rect', { x: x - cw / 2, y: y - ch / 2, width: cw + 0.3, height: ch + 0.3,
+        class: 'cell ' + b + sparse + (i === selected ? ' sel' : '') }, cells);
       r.dataset.i = i;
     });
 
@@ -243,7 +250,8 @@
       if (run !== reportRun) return;            // settings changed; a newer report is running
       if (j < HUBS.length) {
         const s = G.summary(src, j), r = G.recommend(src, 1, j)[0];
-        rows.push({ name: HUBS[j], good: s.goodPct, poor: s.poorPct, feeder: r && r.gainKm2 >= 0.5 ? r : null });
+        rows.push({ name: HUBS[j], good: s.goodPeoplePct, poor: s.poorPeoplePct,
+                    feeder: r && r.gainPeople >= CONFIG.gapMap.minFeederPeople ? r : null });
         j++;
         setTimeout(step, 0);
         return;
@@ -268,8 +276,8 @@
       '<td class="pct poor">' + Math.round(r.poor) + '%</td>' +
       '<td>' + (r.feeder ? '🚌 ' + M.esc(stName(r.feeder.station)) + '<small>' + gainHtml(r.feeder) + '</small>'
         : '<span class="muted">' + t('rep.none') + '</span>') + '</td>' +
-      '<td>' + (r.feeder ? '<span class="pct good">' + Math.round(r.feeder.goodPct) + '%</span> / <span class="pct poor">' +
-        Math.round(r.feeder.poorPct) + '%</span>' : '–') + '</td></tr>').join('');
+      '<td>' + (r.feeder ? '<span class="pct good">' + Math.round(r.feeder.goodPeoplePct) + '%</span> / <span class="pct poor">' +
+        Math.round(r.feeder.poorPeoplePct) + '%</span>' : '–') + '</td></tr>').join('');
   }
 
   /* ------------------------------------------------------------------
@@ -314,6 +322,7 @@
     const box = $('#cell-info');
     box.innerHTML = '<div class="cell-head"><h3>' + M.esc(title) + '</h3>' +
       '<button type="button" class="link-btn" id="cell-close">' + t('cell.close') + '</button></div>' +
+      '<p class="note">' + t('cell.people', { people: people(c.people) }) + '</p>' +
       '<table class="compare cell-table"><thead><tr><th>' + t('cell.to') + '</th><th></th><th>' + t('cell.metro') +
       '</th><th>' + t('cell.auto') + '</th></tr></thead><tbody>' + body + '</tbody></table>' +
       '<div class="rec-actions"><label class="small-label" for="cell-to">' + t('cell.planTo') + '</label>' +
