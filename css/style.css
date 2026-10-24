@@ -327,8 +327,8 @@ dialog.ask-dialog::backdrop { background: rgba(10,8,16,.38); }
 .ask-head h2 { margin:0; font-size:18px; }
 .ask-messages { display:flex; flex:1; flex-direction:column; gap:8px; overflow:auto; min-height:80px; padding:12px 2px; }
 .ask-bubble { max-width:92%; padding:9px 11px; border-radius:12px; line-height:1.4; overflow-wrap:anywhere; }
-.ask-user { align-self:flex-end; background:var(--accent); color:#fff; }
-.ask-bot { align-self:flex-start; background:var(--soft); color:var(--ink); }
+.ask-user { align-self:flex-end; background:var(--brand); color:var(--brand-ink); }
+.ask-bot { align-self:flex-start; background:var(--bg); color:var(--ink); border:1px solid var(--line); }
 .ask-action { display:block; margin-top:7px; }
 .ask-chips { display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 10px; }
 .ask-chips button { border:1px solid var(--line); border-radius:999px; padding:5px 8px; color:var(--ink); background:var(--panel); font:inherit; font-size:12px; cursor:pointer; }
