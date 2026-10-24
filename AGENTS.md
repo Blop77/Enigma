@@ -17,6 +17,9 @@ It is plain HTML, CSS and JavaScript with **no build step and no dependencies**,
 | `js/app.js` | Trip planner UI, tabs, savings tracker; exposes `window.MetroMitra` | Browser only. |
 | `js/savings-card.js` | Draws and exports the shareable savings card | Browser only; canvas UI. |
 | `js/gap-ui.js` | Gap Map UI, feeder simulator, city report; keeps the view's settings in the URL | Browser only. Call `syncHash()` after any change to hub, time, Line 3 or feeders. |
+| `js/pitch-data.js` | Peak-hour pitch-sheet figures computed from the Gap Map engine | Pure UMD; no DOM. |
+| `js/pitch.js` | Static pitch-sheet map, findings and QR renderer | Browser only. |
+| `pitch.html`, `css/pitch.css` | Printable pitch sheet | One A4 portrait page, with slide and mobile layouts. |
 | `js/share.js` | `encodeGap`/`decodeGap` (pure, tested) and the QR / copy-link dialog | Decoding must ignore unknown values, never throw. |
 | `js/guide.js` | First-visit guide | Write i18n keys out in full so the i18n test can check them. |
 | `js/vendor/qrcode.js` | Third-party QR generator (MIT) | Do not edit. |
@@ -32,6 +35,7 @@ node tests/gapmap.test.js      # must pass
 node tests/i18n.test.js        # must pass: catches missing keys and untranslated strings
 node tests/savings.test.js     # savings totals and month filtering
 node tests/share.test.js       # share-link encode/decode
+node tests/pitch.test.js       # live pitch-sheet figures
 npx serve .                    # then open http://localhost:3000
 ```
 

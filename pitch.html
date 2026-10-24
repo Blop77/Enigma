@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#5b2a86">
+  <title data-i18n-attr="title:pitch.title">MetroMitra · Pune Metro hackathon</title>
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/pitch.css">
+</head>
+<body>
+  <button id="pitch-lang" class="language" type="button" data-i18n="lang.switch">मराठी</button>
+  <main class="sheet">
+    <header class="masthead">
+      <div class="brand"><span class="logo" aria-hidden="true">M</span><div><h1 data-i18n-html="brand">MetroMitra <span class="mr" lang="mr">मेट्रोमित्र</span></h1><p data-i18n="tagline">Fixing Pune Metro's last mile</p></div></div>
+      <p class="event" data-i18n="pitch.event">Pune Metro hackathon · Urban mobility</p>
+    </header>
+    <section class="hero">
+      <p class="problem" data-i18n="pitch.problem">The train works. The last mile leaves too many people behind.</p>
+      <h2 id="pitch-headline"></h2>
+      <p id="pitch-after" class="after"></p>
+    </section>
+    <section class="main-grid">
+      <div class="map-wrap"><svg id="pitch-map" role="img" aria-label="Peak-hour Gap Map with five suggested feeder buses" data-i18n-attr="aria-label:pitch.mapLabel" viewBox="0 0 600 510"></svg></div>
+      <div class="feeders"><h2 data-i18n="pitch.topFeeders">Top 5 feeders</h2><ol id="pitch-feeders"></ol></div>
+    </section>
+    <section class="findings" aria-label="Key findings" data-i18n-attr="aria-label:pitch.findings">
+      <article class="finding"><span class="eyebrow" data-i18n="pitch.worst">Worst-served hub</span><strong id="pitch-worst-name"></strong><b id="pitch-worst-pct"></b></article>
+      <article class="finding"><span class="eyebrow" data-i18n="pitch.best">Best-served hub</span><strong id="pitch-best-name"></strong><b id="pitch-best-pct"></b></article>
+      <article class="finding line3"><span class="eyebrow" data-i18n="pitch.hinjewadi">Hinjewadi · with planned Line 3</span><strong id="pitch-hinjewadi"></strong><small id="pitch-line3"></small></article>
+    </section>
+    <section class="sources"><h2 data-i18n="pitch.official">Built on official data</h2><ul><li data-i18n="pitch.fares">Maha-Metro fare chart · 378 station pairs</li><li data-i18n="pitch.timetable">2025 timetable</li><li data-i18n="pitch.profile">Maha-Metro project profile</li><li data-i18n="pitch.tariff">Pune RTA auto tariff</li></ul><p class="estimates" data-i18n="pitch.estimates">Coordinates, Line 3 details and the feeder model are estimates.</p></section>
+    <aside class="qr-block"><div id="pitch-qr" aria-hidden="true"></div><div><b data-i18n="pitch.scan">Scan to explore MetroMitra</b><p data-i18n="pitch.url">https://blop77.github.io/metro-mitra/</p></div></aside>
+    <footer class="foot"><span data-i18n-html="footer">Lines 1–2 fares and operating times use Maha-Metro sources. Line 3 run time and station locations, road costs, emissions and feeder assumptions are <strong>estimates</strong>. Feeders are simulated. Built for the Pune Metro hackathon · Urban mobility.</span></footer>
+  </main>
+  <script src="js/data.js"></script><script src="js/i18n.js"></script><script src="js/planner.js"></script><script src="js/gapmap.js"></script><script src="js/pitch-data.js"></script><script src="js/vendor/qrcode.js"></script><script src="js/pitch.js"></script>
+</body>
+</html>

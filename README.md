@@ -26,6 +26,7 @@ Nobody can see where this happens. Ridership numbers say *how many* people use a
 - **Simulates feeders** (₹10 e-bus or shared e-rickshaw from a station, up to 6 km). It tests a feeder at every station and greedily picks the five that improve access the most: **37% → 53%**.
 - **Lets you place feeders yourself:** tap any station to add or remove one and the map updates instantly.
 - **City report:** ranks all 12 hubs by metro access, with the single best feeder for each. Print it or save it as a PDF to hand to decision-makers.
+- **Pitch sheet:** a one-page English/Marathi opening slide with a live-rendered Gap Map, feeder gains, hub findings and QR code. Open [`pitch.html`](pitch.html) to present it or print it as a single A4 page.
 - **Tap any square** to see every trip from there (route, time and cost vs an auto), then open it in the trip planner.
 - **Share any view:** the destination, peak/off-peak, Line 3, chosen feeders and language live in the link. Copy it, or show a **QR code** on stage so judges open your exact view on their phones. Trips in the planner have a QR code too.
 - **Quick guide:** a 5-step tour on the first visit (pick a destination → add feeders → tap a square → city report → trip planner), replayable from the **?** button.
@@ -73,6 +74,10 @@ js/gapmap.js     Gap Map engine: grid, scoring, feeder simulation, greedy recomm
 js/app.js        Trip planner UI, tabs, savings tracker, share links
 js/savings-card.js Draws and exports the shareable 1080×1080 savings card
 js/gap-ui.js     Gap Map UI: heat map, feeder simulator, city report, link state
+js/pitch-data.js Pure peak-hour pitch figures, computed from the Gap Map engine
+js/pitch.js      Pitch sheet SVG map, findings and QR rendering
+pitch.html       Printable A4 pitch sheet and presentation view
+css/pitch.css    Pitch sheet slide, mobile, dark-mode and print layouts
 js/share.js      Shareable links (encode/decode) and the QR-code dialog
 js/guide.js      First-visit guide
 js/vendor/qrcode.js  QR Code Generator by Kazuhiko Arase (MIT), unmodified
@@ -119,6 +124,7 @@ node tests/gapmap.test.js      # Gap Map engine
 node tests/i18n.test.js        # every string translated, every key used exists
 node tests/savings.test.js     # savings totals and month filtering
 node tests/share.test.js       # share links round-trip; bad links are ignored safely
+node tests/pitch.test.js       # pitch-sheet figures match the Gap Map engine
 ```
 
 ## Demo script (3 minutes)
