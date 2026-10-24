@@ -1,11 +1,14 @@
 /*
  * data.js — Pune Metro network, landmarks and cost assumptions for MetroMitra.
  *
- * Coordinates are approximate (good to ~200 m) and were entered by hand.
- * Fares, auto/cab tariffs, timings and emission factors are ESTIMATES used
- * for the prototype. Check them against the official Maha-Metro fare chart
- * and the Pune RTA tariff before the demo. Everything tunable lives here so
- * the planner itself never needs to change when numbers do.
+ * Official Maha-Metro sources (shared by the team, Oct 2026):
+ *   - station list and open status: Maha-Metro "Project profile"
+ *   - service hours, peak hours, frequencies, end-to-end times and distances:
+ *     Pune Metro timetable "W.E.F. 15th August 2025"
+ *   - fares: Maha-Metro station-to-station fare chart (FARE_CHART below)
+ * Still ESTIMATES: station coordinates (entered by hand, good to ~200 m),
+ * auto/cab tariffs, road speeds, emission factors and the feeder model.
+ * Everything tunable lives here so the engines never change when numbers do.
  *
  * Works in the browser (window.MetroData) and in Node (module.exports).
  */
@@ -22,9 +25,8 @@
     'dapodi':            ['Dapodi',                     18.5830, 73.8400],
     'bopodi':            ['Bopodi',                     18.5730, 73.8440],
     'khadki':            ['Khadki',                     18.5640, 73.8470],
-    'range-hills':       ['Range Hills',                18.5500, 73.8420],
     'shivaji-nagar':     ['Shivaji Nagar',              18.5320, 73.8500],
-    'civil-court':       ['Civil Court',                18.5270, 73.8550],
+    'civil-court':       ['District Court',             18.5270, 73.8550],   // also called Civil Court
     'budhwar-peth':      ['Budhwar Peth',               18.5180, 73.8560],
     'mandai':            ['Mandai',                     18.5120, 73.8560],
     'swargate':          ['Swargate',                   18.5010, 73.8630],
@@ -51,7 +53,7 @@
   var STATIONS_MR = {
     'pcmc': 'पीसीएमसी', 'sant-tukaram-nagar': 'संत तुकाराम नगर', 'bhosari': 'भोसरी (नाशिक फाटा)',
     'kasarwadi': 'कासारवाडी', 'phugewadi': 'फुगेवाडी', 'dapodi': 'दापोडी', 'bopodi': 'बोपोडी',
-    'khadki': 'खडकी', 'range-hills': 'रेंज हिल्स', 'shivaji-nagar': 'शिवाजीनगर', 'civil-court': 'सिव्हिल कोर्ट',
+    'khadki': 'खडकी', 'shivaji-nagar': 'शिवाजीनगर', 'civil-court': 'जिल्हा न्यायालय',
     'budhwar-peth': 'बुधवार पेठ', 'mandai': 'मंडई', 'swargate': 'स्वारगेट',
     'vanaz': 'वनाझ', 'anand-nagar': 'आनंदनगर', 'ideal-colony': 'आयडियल कॉलनी', 'nal-stop': 'नळ स्टॉप',
     'garware-college': 'गरवारे कॉलेज', 'deccan': 'डेक्कन जिमखाना', 'sambhaji-udyan': 'छत्रपती संभाजी उद्यान',
@@ -61,25 +63,92 @@
   };
 
   // Stations in running order. Shared ids are interchanges.
+  // lengthKm and runMin are the end-to-end distance and time from the official
+  // timetable; station gaps and running speed are scaled to match them.
+  // Range Hill (between Khadki and Shivaji Nagar) is built but not open yet, so
+  // trains pass it without stopping; add it back here when it opens.
   var LINES = {
     purple: {
       name: 'Purple Line',
       short: 'Line 1',
       color: '#8e3fa8',
-      lengthKm: 16.59,     // published route length; station gaps are scaled to match
+      lengthKm: 17.5,
+      runMin: 34,
       stations: ['pcmc', 'sant-tukaram-nagar', 'bhosari', 'kasarwadi', 'phugewadi', 'dapodi',
-                 'bopodi', 'khadki', 'range-hills', 'shivaji-nagar', 'civil-court',
+                 'bopodi', 'khadki', 'shivaji-nagar', 'civil-court',
                  'budhwar-peth', 'mandai', 'swargate']
     },
     aqua: {
       name: 'Aqua Line',
       short: 'Line 2',
       color: '#0fa3b1',
-      lengthKm: 14.66,
+      lengthKm: 14.5,
+      runMin: 37,
       stations: ['vanaz', 'anand-nagar', 'ideal-colony', 'nal-stop', 'garware-college', 'deccan',
                  'sambhaji-udyan', 'pmc', 'civil-court', 'mangalwar-peth', 'pune-station',
                  'ruby-hall', 'bund-garden', 'yerawada', 'kalyani-nagar', 'ramwadi']
     }
+  };
+
+  // Official station-to-station fares (₹), transcribed from Maha-Metro's fare chart.
+  // Row = boarding station, column = destination, both in FARE_CODES order. The chart
+  // lists District Court under both lines with identical fares; it appears once here.
+  // The printed chart is not perfectly symmetric: the pairs in FARE_ASYMMETRIC cost
+  // differently each way and are kept exactly as printed. Please confirm them in the app.
+  var FARE_CODES = ['PIM', 'STG', 'BHO', 'KWA', 'PGD', 'DDI', 'BPI', 'KHK', 'SJO', 'CVC', 'BPD', 'MNA', 'SGT', 'VNZ', 'AND', 'ICY', 'NST', 'GWC', 'DGK', 'SAN', 'PMC', 'MGA', 'PRS', 'RUC', 'BUN', 'YER', 'KNA', 'RAW'];
+  var FARE_CHART = [
+    /* PIM */ [ 0, 15, 15, 20, 20, 25, 25, 25, 30, 30, 30, 30, 30, 35, 35, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 35, 35],
+    /* STG */ [15,  0, 10, 15, 15, 15, 20, 25, 25, 25, 30, 30, 30, 30, 30, 30, 30, 25, 25, 30, 25, 30, 30, 30, 30, 30, 30, 35],
+    /* BHO */ [15, 10,  0, 10, 15, 15, 20, 20, 25, 25, 25, 30, 30, 30, 30, 30, 30, 30, 30, 25, 25, 25, 30, 30, 30, 30, 30, 35],
+    /* KWA */ [20, 15, 10,  0, 10, 10, 15, 20, 25, 25, 25, 25, 30, 30, 30, 30, 30, 25, 25, 25, 25, 25, 25, 25, 30, 30, 30, 30],
+    /* PGD */ [20, 15, 15, 10,  0, 10, 15, 15, 25, 25, 25, 25, 30, 30, 30, 30, 25, 25, 25, 25, 25, 25, 25, 25, 25, 30, 30, 30],
+    /* DDI */ [25, 15, 15, 10, 10,  0, 10, 15, 25, 25, 25, 25, 30, 30, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 30, 30],
+    /* BPI */ [25, 20, 20, 15, 15, 10,  0, 10, 20, 20, 25, 25, 25, 30, 25, 25, 25, 25, 20, 25, 25, 25, 25, 25, 25, 25, 25, 30],
+    /* KHK */ [25, 25, 20, 20, 15, 15, 10,  0, 15, 20, 20, 25, 25, 25, 25, 25, 25, 25, 25, 20, 20, 20, 25, 25, 25, 25, 25, 30],
+    /* SJO */ [30, 25, 25, 25, 25, 25, 20, 15,  0, 10, 15, 15, 20, 25, 25, 20, 20, 15, 15, 15, 10, 15, 15, 15, 20, 20, 25, 25],
+    /* CVC */ [30, 25, 25, 25, 25, 25, 20, 20, 10,  0, 10, 15, 15, 25, 20, 20, 15, 15, 10, 10, 10, 10, 10, 15, 15, 20, 25, 25],
+    /* BPD */ [30, 30, 25, 25, 25, 25, 25, 20, 15, 10,  0, 10, 15, 25, 25, 20, 20, 15, 15, 15, 10, 15, 15, 15, 20, 20, 25, 25],
+    /* MNA */ [30, 30, 30, 25, 25, 25, 25, 25, 15, 15, 10,  0, 10, 25, 25, 25, 20, 20, 15, 15, 15, 15, 15, 20, 20, 25, 25, 25],
+    /* SGT */ [30, 30, 30, 30, 25, 25, 25, 25, 20, 15, 15, 10,  0, 25, 25, 25, 25, 25, 20, 20, 20, 20, 20, 25, 25, 25, 25, 25],
+    /* VNZ */ [35, 30, 30, 30, 30, 30, 30, 25, 25, 25, 25, 25, 25,  0, 10, 10, 15, 15, 20, 20, 20, 25, 25, 25, 25, 25, 30, 30],
+    /* AND */ [35, 30, 30, 30, 30, 30, 25, 25, 25, 20, 25, 25, 25, 10,  0, 10, 10, 15, 15, 20, 20, 25, 25, 25, 25, 25, 30, 30],
+    /* ICY */ [30, 30, 30, 30, 30, 25, 25, 25, 20, 20, 20, 25, 25, 10, 10,  0, 10, 10, 15, 15, 20, 20, 25, 25, 25, 25, 25, 30],
+    /* NST */ [30, 30, 30, 30, 25, 25, 25, 25, 20, 15, 20, 20, 25, 15, 10, 10,  0, 10, 10, 15, 15, 20, 20, 25, 25, 25, 25, 25],
+    /* GWC */ [30, 30, 30, 25, 25, 25, 25, 25, 15, 15, 15, 20, 25, 15, 15, 10, 10,  0, 10, 10, 15, 15, 20, 20, 25, 25, 25, 25],
+    /* DGK */ [30, 30, 30, 25, 25, 25, 25, 25, 15, 10, 15, 15, 20, 20, 15, 15, 10, 10,  0, 10, 10, 15, 15, 25, 25, 20, 25, 25],
+    /* SAN */ [30, 30, 25, 25, 25, 25, 25, 20, 15, 10, 15, 15, 20, 20, 20, 15, 15, 10, 10,  0, 10, 15, 15, 15, 25, 20, 25, 25],
+    /* PMC */ [30, 25, 25, 25, 25, 25, 25, 20, 10, 10, 10, 15, 20, 20, 20, 20, 15, 15, 10, 10,  0, 10, 15, 15, 20, 20, 25, 25],
+    /* MGA */ [30, 30, 25, 25, 25, 25, 25, 20, 15, 10, 15, 15, 20, 25, 25, 20, 20, 15, 15, 15, 10,  0, 10, 10, 15, 15, 20, 25],
+    /* PRS */ [30, 30, 30, 25, 25, 25, 25, 25, 15, 10, 15, 15, 20, 25, 25, 25, 20, 20, 15, 15, 15, 10,  0, 10, 10, 15, 20, 25],
+    /* RUC */ [30, 30, 30, 25, 25, 25, 25, 25, 15, 15, 15, 20, 25, 25, 25, 25, 25, 20, 20, 15, 15, 10, 10,  0, 10, 10, 20, 20],
+    /* BUN */ [30, 30, 30, 30, 25, 25, 25, 25, 20, 15, 20, 20, 25, 25, 25, 25, 25, 25, 20, 20, 20, 15, 10, 10,  0, 10, 15, 20],
+    /* YER */ [30, 30, 30, 30, 30, 25, 25, 25, 20, 20, 20, 25, 25, 25, 25, 25, 25, 25, 20, 20, 20, 15, 15, 10, 10,  0, 15, 15],
+    /* KNA */ [35, 30, 30, 30, 30, 30, 25, 25, 25, 25, 25, 25, 25, 30, 30, 25, 25, 25, 25, 25, 25, 20, 20, 15, 15, 15,  0, 10],
+    /* RAW */ [35, 35, 35, 30, 30, 30, 30, 30, 25, 25, 25, 25, 25, 30, 30, 30, 25, 25, 25, 25, 25, 25, 25, 20, 20, 15, 10,  0]
+  ];
+  var FARE_ASYMMETRIC = [['STG', 'GWC'], ['STG', 'DGK'], ['PGD', 'SGT'], ['DDI', 'SGT'], ['DDI', 'AND'], ['BPI', 'DGK'], ['DGK', 'RUC'], ['DGK', 'BUN'], ['SAN', 'BUN'], ['RUC', 'KNA']];
+
+  // Station id -> code used on Maha-Metro's fare chart.
+  var STATION_CODES = {
+    'pcmc': 'PIM', 'sant-tukaram-nagar': 'STG', 'bhosari': 'BHO', 'kasarwadi': 'KWA', 'phugewadi': 'PGD',
+    'dapodi': 'DDI', 'bopodi': 'BPI', 'khadki': 'KHK', 'shivaji-nagar': 'SJO', 'civil-court': 'CVC',
+    'budhwar-peth': 'BPD', 'mandai': 'MNA', 'swargate': 'SGT', 'vanaz': 'VNZ', 'anand-nagar': 'AND',
+    'ideal-colony': 'ICY', 'nal-stop': 'NST', 'garware-college': 'GWC', 'deccan': 'DGK',
+    'sambhaji-udyan': 'SAN', 'pmc': 'PMC', 'mangalwar-peth': 'MGA', 'pune-station': 'PRS', 'ruby-hall': 'RUC',
+    'bund-garden': 'BUN', 'yerawada': 'YER', 'kalyani-nagar': 'KNA', 'ramwadi': 'RAW'
+  };
+
+  // Other names riders use for a station (the fare chart and older maps use some
+  // of these), so search finds them. English and Marathi.
+  var STATION_ALIASES = {
+    'civil-court': ['Civil Court', 'सिव्हिल कोर्ट'],
+    'bhosari': ['Nashik Phata', 'नाशिक फाटा'],
+    'budhwar-peth': ['Kasba Peth', 'कसबा पेठ'],
+    'mandai': ['Mahatma Phule Mandai', 'महात्मा फुले मंडई'],
+    'ideal-colony': ['Paud Phata', 'पौड फाटा'],
+    'nal-stop': ['S. N. D. T. College', 'SNDT College', 'एसएनडीटी कॉलेज'],
+    'mangalwar-peth': ['R.T.O., Pune', 'RTO', 'आरटीओ'],
+    'yerawada': ['Yerwada']
   };
 
   // Places people actually travel to. name, lat, lng.
@@ -148,8 +217,8 @@
   };
 
   var CONFIG = {
-    // Metro fare by trip distance (km, inclusive upper bound -> rupees).
-    // Matches published examples: Swargate–Vanaz ₹30, Swargate–Ramwadi ₹30, Ramwadi–PCMC ₹35.
+    // Fallback fare by trip distance (km, inclusive upper bound -> rupees), used only
+    // for station pairs missing from FARE_CHART (e.g. a future line).
     fareSlabs: [[1, 10], [2, 15], [4, 20], [8, 25], [16, 30], [Infinity, 35]],
 
     // Concessions, as reported in 2023–25 news. Percent off the fare.
@@ -161,14 +230,13 @@
     },
 
     // Metro operations.
-    metroSpeedKmh: 33,       // average running speed between stations
-    dwellMin: 0.5,           // stop time at each intermediate station
+    dwellMin: 0.5,           // stop time at each intermediate station (running speed comes from LINES.runMin)
     transferMin: 4,          // walking between platforms at an interchange
     firstTrain: '06:00',
-    lastTrain: '23:00',     // extended from 22:00 in January 2025
-    peakHeadwayMin: 7,
+    lastTrain: '23:00',
+    peakHeadwayMin: 6,
     offPeakHeadwayMin: 10,
-    peakWindows: [['08:00', '11:00'], ['17:00', '20:00']],
+    peakWindows: [['08:00', '11:00'], ['16:00', '20:00']],
     stationEntryMin: 3,      // security check, ticket, reaching the platform
 
     // Roads. Straight-line distance is multiplied by this to estimate road distance.
@@ -211,7 +279,9 @@
   ];
 
   var MetroData = { STATIONS: STATIONS, STATIONS_MR: STATIONS_MR, LINES: LINES, LANDMARKS: LANDMARKS,
-                    LANDMARKS_MR: LANDMARKS_MR, HUBS: HUBS, CONFIG: CONFIG };
+                    LANDMARKS_MR: LANDMARKS_MR, HUBS: HUBS, CONFIG: CONFIG,
+                    FARE_CODES: FARE_CODES, FARE_CHART: FARE_CHART, FARE_ASYMMETRIC: FARE_ASYMMETRIC,
+                    STATION_CODES: STATION_CODES, STATION_ALIASES: STATION_ALIASES };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = MetroData;
   else root.MetroData = MetroData;
