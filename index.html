@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MetroMitra · Pune Metro door-to-door planner</title>
-  <meta name="description" content="Plan any trip across Pune door to door: nearest metro station, the right line and interchange, fare, first and last mile, and an honest comparison with an auto or cab.">
+  <title>MetroMitra · Pune Metro gap map and trip planner</title>
+  <meta name="description" content="See where Pune Metro beats an auto and where it fails, simulate feeder buses that fix the last mile, and plan any trip door to door.">
   <meta name="theme-color" content="#5b2a86">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -17,19 +17,88 @@
       <span class="logo" aria-hidden="true">M</span>
       <div>
         <h1>MetroMitra <span class="mr" lang="mr">मेट्रोमित्र</span></h1>
-        <p class="tagline">Your door-to-door Pune Metro companion</p>
+        <p class="tagline">Fixing Pune Metro's last mile</p>
       </div>
     </div>
     <div id="service" class="service" role="status"></div>
   </header>
 
-  <main class="layout">
+  <nav class="tabs" role="tablist" aria-label="Views">
+    <button type="button" role="tab" id="tab-gap" data-view="gap" aria-controls="view-gap">🗺️ Gap Map <small>for the city</small></button>
+    <button type="button" role="tab" id="tab-plan" data-view="plan" aria-controls="view-plan">🧭 Trip planner <small>for riders</small></button>
+  </nav>
+
+  <main class="layout gap-layout" id="view-gap" role="tabpanel" aria-labelledby="tab-gap" hidden>
+    <section class="panel gap-side" aria-label="Gap Map controls">
+      <div class="headline">
+        <p class="big"><b id="gap-pct">–</b><span id="gap-after"></span></p>
+        <p id="gap-caption" class="caption">Working out where the metro works…</p>
+        <div class="bar" id="gap-bar" aria-hidden="true"><i class="good"></i><i class="mixed"></i><i class="poor"></i></div>
+        <ul class="key">
+          <li><i class="good"></i>Metro beats an auto</li>
+          <li><i class="mixed"></i>Cheaper but slower</li>
+          <li><i class="poor"></i>Auto is better</li>
+        </ul>
+      </div>
+
+      <div class="options">
+        <div class="field small">
+          <label for="gap-hub">Getting to</label>
+          <select id="gap-hub"></select>
+        </div>
+        <fieldset class="field small">
+          <legend>Time</legend>
+          <div class="seg" role="radiogroup">
+            <label><input type="radio" name="gap-time" value="peak" checked><span>Peak</span></label>
+            <label><input type="radio" name="gap-time" value="off"><span>Off-peak</span></label>
+          </div>
+        </fieldset>
+      </div>
+
+      <h3>Where should Pune add feeder buses?</h3>
+      <p class="note">A feeder is a ₹10 e-bus or shared e-rickshaw serving homes and offices up to
+        <span id="feeder-km"></span> km from a station. MetroMitra tests every station and picks the ones that turn the most of Pune green.</p>
+      <ol id="recs" class="recs"><li class="muted">Calculating…</li></ol>
+      <div class="rec-actions">
+        <button type="button" id="apply-all" class="primary small-btn">Add all suggested feeders</button>
+        <button type="button" id="reset-feeders" class="link-btn">Remove all</button>
+      </div>
+      <p class="note">Tip: tap any station on the map to add or remove a feeder there yourself.</p>
+
+      <div id="cell-info" class="cell-info" hidden></div>
+    </section>
+
+    <section class="panel gap-map-panel" aria-label="Gap Map of Pune">
+      <div class="map-head">
+        <h2 id="gap-title">Where the metro works</h2>
+        <div class="legend" id="gap-legend"></div>
+      </div>
+      <svg id="gap-map" role="img" aria-label="Map of Pune coloured by whether the metro beats an auto"></svg>
+      <p class="hint">Tap a square to see the trips from there. Each square is about <span id="cell-size"></span> km².</p>
+    </section>
+
+    <section class="panel report" id="report" aria-label="City report">
+      <div class="map-head">
+        <h2>City report: metro access to every hub</h2>
+        <button type="button" id="print-report" class="link-btn">🖨️ Print / save as PDF</button>
+      </div>
+      <p class="note" id="report-lead">Ranking hubs…</p>
+      <table class="compare report-table">
+        <thead><tr><th>Hub</th><th>Metro wins</th><th>Auto better</th><th>Best single feeder</th><th>With it: wins / auto better</th></tr></thead>
+        <tbody id="report-body"></tbody>
+      </table>
+      <p class="note">Peak/off-peak follows the Time setting above. Share of the area within reach of the metro;
+        trips shorter than <span id="min-trip"></span> km are left out.</p>
+    </section>
+  </main>
+
+  <main class="layout" id="view-plan" role="tabpanel" aria-labelledby="tab-plan" hidden>
     <section class="panel planner" aria-label="Plan a trip">
       <form id="plan-form" autocomplete="off">
         <div class="field">
           <label for="from">From</label>
           <div class="input-row">
-            <input id="from" list="places" placeholder="Station, college, landmark…" required>
+            <input id="from" list="places" placeholder="Station, college, landmark… (मराठीतही)" required>
             <button type="button" id="locate" class="icon-btn" title="Use my location" aria-label="Use my location">◎</button>
           </div>
         </div>
@@ -92,12 +161,14 @@
   </main>
 
   <footer class="foot">
-    <p>Fares, timings and road costs are <strong>estimates</strong> for planning, not official Maha-Metro data.
-       Built for the Pune Metro hackathon · Urban mobility.</p>
+    <p>Fares, timings, coordinates and road costs are <strong>estimates</strong> for planning, not official Maha-Metro data.
+       Feeders are a simulation. Built for the Pune Metro hackathon · Urban mobility.</p>
   </footer>
 
   <script src="js/data.js"></script>
   <script src="js/planner.js"></script>
+  <script src="js/gapmap.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/gap-ui.js"></script>
 </body>
 </html>

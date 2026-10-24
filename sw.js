@@ -4,9 +4,9 @@
  * Bump VERSION whenever any cached file changes.
  */
 'use strict';
-const VERSION = 'metromitra-v1';
+const VERSION = 'metromitra-v2';
 const FILES = [
-  './', 'index.html', 'css/style.css', 'js/data.js', 'js/planner.js', 'js/app.js',
+  './', 'index.html', 'css/style.css', 'js/data.js', 'js/planner.js', 'js/gapmap.js', 'js/app.js', 'js/gap-ui.js',
   'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'
 ];
 

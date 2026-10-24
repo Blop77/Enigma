@@ -19,6 +19,11 @@ test('Every line station exists and every station is on a line', () => {
   Object.keys(STATIONS).forEach(id => assert.ok(onLine.has(id), id + ' is on no line'));
 });
 
+test('Every station has a Marathi name', () => {
+  const { STATIONS_MR } = require('../js/data.js');
+  Object.keys(STATIONS).forEach(id => assert.ok(/[\u0900-\u097F]/.test(STATIONS_MR[id] || ''), id));
+});
+
 test('Civil Court is the interchange between Purple and Aqua', () => {
   assert.deepStrictEqual(P.linesAt('civil-court').sort(), ['aqua', 'purple']);
   assert.deepStrictEqual(P.linesAt('swargate'), ['purple']);
