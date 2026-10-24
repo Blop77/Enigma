@@ -82,6 +82,11 @@ h1, h2, h3 { margin: 0; line-height: 1.2; }
   padding: 6px 14px; font-size: 13px; font-weight: 700; cursor: pointer;
 }
 .lang-btn:hover { background: var(--brand); color: var(--brand-ink); }
+.help-btn {
+  width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel);
+  color: var(--ink); font-weight: 800; cursor: pointer;
+}
+.help-btn:hover { border-color: var(--brand); color: var(--brand); }
 .access-btn {
   border: 1px solid var(--aqua); color: var(--ink); background: var(--panel); border-radius: 999px;
   padding: 6px 12px; font-size: 13px; font-weight: 700; cursor: pointer;
@@ -297,9 +302,33 @@ html.accessible #map .lbl, html.accessible #gap-map .lbl { font-size: 20px; stro
 .report-table td small { display: block; color: var(--muted); font-size: 11px; font-weight: 400; }
 .report { overflow-x: auto; }
 
+/* ---------- sharing and the guide ---------- */
+.share-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+dialog.qr-dialog {
+  border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; background: var(--panel); color: var(--ink);
+  width: min(420px, calc(100vw - 32px)); text-align: center;
+}
+dialog.qr-dialog::backdrop { background: rgba(10, 8, 16, .65); }
+dialog.qr-dialog h2 { font-size: 18px; }
+.qr-code svg { display: block; width: min(320px, 72vw); height: auto; margin: 14px auto; border-radius: 8px; }
+.qr-url { margin: 0 0 14px; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.qr-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.guide {
+  position: fixed; z-index: 50; right: 16px; bottom: 16px; width: min(360px, calc(100vw - 32px));
+  background: var(--panel); border: 1px solid var(--brand); border-radius: var(--radius);
+  box-shadow: 0 10px 40px rgba(20, 10, 40, .3); padding: 14px 16px;
+}
+.guide h3 { margin: 2px 0 4px; font-size: 17px; }
+.guide p { margin: 0; }
+.guide-step { font-size: 12px; color: var(--muted); }
+.guide-actions { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.guide-actions .spacer { flex: 1; }
+.guide-focus { outline: 3px solid var(--brand) !important; outline-offset: 4px; border-radius: 10px; }
+@media (max-width: 600px) { .guide { left: 12px; right: 12px; bottom: 12px; width: auto; } }
+
 @media print {
   body { background: #fff; }
-  .tabs, .gap-side .options, .gap-side h3, .gap-side .note, .recs, .rec-actions, .cell-info,
+  .guide, .help-btn, .share-row, dialog, .tabs, .gap-side .options, .gap-side h3, .gap-side .note, .recs, .rec-actions, .cell-info,
   #view-plan, .service, #print-report, .hint, .foot { display: none !important; }
   .layout { display: block; padding: 0; }
   .panel { box-shadow: none; border: 0; break-inside: avoid; padding: 8px 0; }

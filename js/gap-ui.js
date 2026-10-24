@@ -1,14 +1,14 @@
 /*
  * gap-ui.js — the Gap Map view: a heat map of where Pune Metro beats an auto,
  * and a feeder-bus simulator. Depends on data.js, i18n.js, planner.js,
- * gapmap.js and app.js (window.MetroMitra for formatting and opening the
- * trip planner).
+ * gapmap.js, share.js and app.js (window.MetroMitra for formatting and
+ * opening the trip planner).
  */
 (function () {
   'use strict';
 
   const { STATIONS, STATIONS_MR, LINES, LANDMARKS, HUBS, CONFIG } = MetroData;
-  const P = MetroPlanner, G = GapMap, M = window.MetroMitra, I = I18N, t = I18N.t;
+  const P = MetroPlanner, G = GapMap, M = window.MetroMitra, S = MetroShare, I = I18N, t = I18N.t;
   const $ = (sel) => document.querySelector(sel);
   const svg = $('#gap-map');
   const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -45,6 +45,32 @@
     setTimeout(buildReport, 60);
   }
 
+  /* ------------------------------------------------------------------
+   * Shareable links: the settings live in the URL so any view can be
+   * copied or opened from a QR code.
+   * ------------------------------------------------------------------ */
+  function gapState() {
+    return { hub: hub() >= 0 ? HUBS[hub()] : null, peak: peak(), line3: includePlanned(),
+             feeders: Array.from(chosenFeeders), lang: I.lang };
+  }
+
+  function syncHash() {
+    if (started && M.view === 'gap') history.replaceState(null, '', '#' + S.encodeGap(gapState()));
+  }
+
+  function shareUrl() {
+    return location.href.split('#')[0] + '#' + S.encodeGap(gapState());
+  }
+
+  // Settings from the link the page was opened with (before anything rewrote it).
+  function applyLink() {
+    const link = S.decodeGap(M.initialHash);
+    if (link.hub) $('#gap-hub').value = String(HUBS.indexOf(link.hub));
+    document.querySelector('input[name=gap-time][value=' + (link.peak ? 'peak' : 'off') + ']').checked = true;
+    $('#include-line3').checked = link.line3;
+    link.feeders.forEach((id) => chosenFeeders.add(id));
+  }
+
   // Hub changed: same grid, new headline and suggestions.
   let pending = 0;
   function refresh() {
@@ -52,6 +78,7 @@
     recs = null;
     render();
     renderRecs();
+    syncHash();
     // Recommending takes about a second; let the map paint first.
     const ticket = ++pending;
     setTimeout(() => {
@@ -113,6 +140,7 @@
     G.setFeeder(state, id, on);
     render();
     renderRecs();
+    syncHash();
   }
 
   /* ------------------------------------------------------------------
@@ -326,7 +354,10 @@
     if (started) return;
     started = true;
     translate();
+    applyLink();
     $('#print-report').addEventListener('click', () => window.print());
+    $('#gap-copy').addEventListener('click', (e) => S.copy(shareUrl(), e.currentTarget));
+    $('#gap-qr').addEventListener('click', () => S.showQr(shareUrl(), t('share.qrTitle')));
     $('#gap-hub').addEventListener('change', () => {
       selected = null;
       $('#cell-info').hidden = true;
@@ -338,12 +369,14 @@
       (recs || []).forEach((r) => { G.setFeeder(state, r.station, true); chosenFeeders.add(r.station); });
       render();
       renderRecs();
+      syncHash();
     });
     $('#reset-feeders').addEventListener('click', () => {
       G.feederList(state).forEach((id) => G.setFeeder(state, id, false));
       chosenFeeders.clear();
       render();
       renderRecs();
+      syncHash();
     });
     svg.addEventListener('click', (e) => {
       if (document.documentElement.classList.contains('accessible') &&
@@ -361,9 +394,10 @@
       }
     });
     rebuild();
+    document.dispatchEvent(new CustomEvent('mm:gapready'));
   }
 
-  document.addEventListener('mm:view', (e) => { if (e.detail === 'gap') start(); });
+  document.addEventListener('mm:view', (e) => { if (e.detail === 'gap') { start(); syncHash(); } });
   document.addEventListener('mm:lang', () => {
     if (!started) return;
     translate();
@@ -371,6 +405,7 @@
     renderRecs();
     renderReport();
     if (selected !== null && !$('#cell-info').hidden) showCell(selected);
+    syncHash();
   });
   document.addEventListener('mm:access', () => { if (started) render(); });
   if (M.view === 'gap') start();

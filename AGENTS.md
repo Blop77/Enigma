@@ -16,7 +16,10 @@ It is plain HTML, CSS and JavaScript with **no build step and no dependencies**,
 | `js/gapmap.js` | Gap Map engine: grid, scoring, feeders, recommendations | No DOM. Must stay consistent with `planner.js` (a test checks this). |
 | `js/app.js` | Trip planner UI, tabs, savings tracker; exposes `window.MetroMitra` | Browser only. |
 | `js/savings-card.js` | Draws and exports the shareable savings card | Browser only; canvas UI. |
-| `js/gap-ui.js` | Gap Map UI, feeder simulator, city report | Browser only. |
+| `js/gap-ui.js` | Gap Map UI, feeder simulator, city report; keeps the view's settings in the URL | Browser only. Call `syncHash()` after any change to hub, time, Line 3 or feeders. |
+| `js/share.js` | `encodeGap`/`decodeGap` (pure, tested) and the QR / copy-link dialog | Decoding must ignore unknown values, never throw. |
+| `js/guide.js` | First-visit guide | Write i18n keys out in full so the i18n test can check them. |
+| `js/vendor/qrcode.js` | Third-party QR generator (MIT) | Do not edit. |
 | `js/i18n.js` | Every user-visible string as `[English, Marathi]`; `I18N.t(key, vars)`, `I18N.station/place/line` for names | **No string literals for users anywhere else.** Add both languages for every new key. |
 | `css/style.css` | All styles; colour tokens on `:root` with a dark-mode override | Mobile first, two columns from 900px. |
 | `sw.js` | Offline cache | **Bump `VERSION` and update `FILES` when you add or change a cached file.** |
@@ -28,6 +31,7 @@ node tests/planner.test.js     # must pass
 node tests/gapmap.test.js      # must pass
 node tests/i18n.test.js        # must pass: catches missing keys and untranslated strings
 node tests/savings.test.js     # savings totals and month filtering
+node tests/share.test.js       # share-link encode/decode
 npx serve .                    # then open http://localhost:3000
 ```
 
@@ -59,4 +63,4 @@ Each task is self-contained. Paste one as a prompt.
 
 ## Definition of done
 
-All four test files pass, the page loads with no console errors on desktop and at 390px, dark mode looks right, the offline cache is updated if files changed, every new string exists in English and Marathi, and the README mentions the new feature.
+All test files in Commands pass, the page loads with no console errors on desktop and at 390px, dark mode looks right, the offline cache is updated if files changed, every new string exists in English and Marathi, and the README mentions the new feature.

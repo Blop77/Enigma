@@ -23,6 +23,7 @@
     <div class="top-right">
       <button type="button" id="lang-toggle" class="lang-btn" data-i18n="lang.switch" data-i18n-attr="aria-label:lang.switchLabel" aria-label="मराठीत पाहा">मराठी</button>
       <button type="button" id="access-toggle" class="access-btn" aria-pressed="false" data-i18n="access.toggle" data-i18n-attr="aria-label:access.toggleAria">♿ Accessible</button>
+      <button type="button" id="guide-btn" class="help-btn" aria-label="Show the guide" data-i18n-attr="aria-label:guide.open;title:guide.open">?</button>
       <div id="service" class="service" role="status"></div>
     </div>
   </header>
@@ -82,6 +83,10 @@
       </div>
       <svg id="gap-map" role="img" aria-label="Map of Pune coloured by whether the metro beats an auto" data-i18n-attr="aria-label:gap.mapAria"></svg>
       <p class="hint" id="gap-hint"></p>
+      <div class="share-row">
+        <button type="button" id="gap-copy" class="share" data-i18n="share.link">🔗 Copy link to this view</button>
+        <button type="button" id="gap-qr" class="share" data-i18n="share.qr">▣ Show QR code</button>
+      </div>
     </section>
 
     <section class="panel report" id="report" aria-label="City report" data-i18n-attr="aria-label:rep.label">
@@ -176,8 +181,11 @@
   <script src="js/planner.js"></script>
   <script src="js/savings.js"></script>
   <script src="js/gapmap.js"></script>
+  <script src="js/vendor/qrcode.js"></script>
+  <script src="js/share.js"></script>
   <script src="js/app.js"></script>
   <script src="js/savings-card.js"></script>
+  <script src="js/guide.js"></script>
   <script src="js/gap-ui.js"></script>
 </body>
 </html>

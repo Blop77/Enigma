@@ -11,6 +11,7 @@
   const Savings = MetroSavings;
   const OPEN_STATION_IDS = Object.keys(STATIONS).filter((id) => P.linesAt(id).length > 0);
   const OPEN_LINE_IDS = Object.keys(LINES).filter((id) => LINES[id].status !== 'planned');
+  const INITIAL_HASH = location.hash;   // read before showView() rewrites it; the Gap Map restores from it
   const STORE_KEY = 'metromitra-v1';
   const LANG_KEY = 'metromitra-lang';
   const ACCESS_KEY = 'metromitra-accessible';
@@ -234,11 +235,14 @@
     }
     html += '<div class="actions">' +
       (trip.best && trip.verdict.kind !== 'closed' ? '<button type="button" class="took" id="took">' + t('res.took') + '</button>' : '') +
-      '<button type="button" class="share" id="share">' + t('res.share') + '</button></div>';
+      '<button type="button" class="share" id="share">' + t('res.share') + '</button>' +
+      '<button type="button" class="share" id="trip-qr">' + t('share.qr') + '</button></div>';
 
     resultsEl.innerHTML = html;
     resultsEl.hidden = false;
     $('#share').addEventListener('click', share);
+    $('#trip-qr').addEventListener('click', () =>
+      MetroShare.showQr(location.href.split('#')[0] + '#' + hashFor(), t('share.qrTrip')));
     const took = $('#took');
     if (took) took.addEventListener('click', () => { logTrip(trip); took.disabled = true; took.textContent = t('res.added'); });
   }
@@ -580,6 +584,8 @@
    * Language: English / मराठी. Saved per device; Marathi browsers start in Marathi.
    * ------------------------------------------------------------------ */
   function initialLang() {
+    const linked = new URLSearchParams(INITIAL_HASH.slice(1)).get('lang');   // a shared link's language wins
+    if (linked === 'mr' || linked === 'en') return linked;
     try { const saved = localStorage.getItem(LANG_KEY); if (saved) return saved; } catch (e) { /* no storage */ }
     return /^mr\b/i.test(navigator.language || '') ? 'mr' : 'en';
   }
@@ -699,6 +705,7 @@
 
   window.MetroMitra = {
     fmtMin, fmtRs, fmtKm, fmtCo2, esc, showView, planFrom,
+    initialHash: INITIAL_HASH,
     get view() { return view; }
   };
 
