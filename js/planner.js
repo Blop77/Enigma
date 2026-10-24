@@ -38,8 +38,10 @@
   function hhmm(str) { var p = str.split(':'); return +p[0] * 60 + +p[1]; }
   function minuteOfDay(date) { return date.getHours() * 60 + date.getMinutes(); }
 
-  function linesAt(id) {
-    return Object.keys(LINES).filter(function (l) { return LINES[l].stations.indexOf(id) !== -1; });
+  function linesAt(id, opts) {
+    return Object.keys(LINES).filter(function (l) {
+      return LINES[l].stations.indexOf(id) !== -1 && (opts && opts.planned || LINES[l].status !== 'planned');
+    });
   }
 
   /* ------------------------------------------------------------------
@@ -78,6 +80,28 @@
     var i = Data.FARE_CODES.indexOf(Data.STATION_CODES[fromId]);
     var j = Data.FARE_CODES.indexOf(Data.STATION_CODES[toId]);
     return i === -1 || j === -1 ? null : Data.FARE_CHART[i][j];
+  }
+
+  // Consecutive legs on one operator are charged as a single trip. Maha-Metro
+  // uses its station chart; PMRDA uses the fallback slabs as an estimate.
+  function operatorFare(legs) {
+    var groups = [];
+    legs.forEach(function (leg) {
+      var operator = LINES[leg.line].operator || 'Maha-Metro';
+      var group = groups[groups.length - 1];
+      if (!group || group.operator !== operator) {
+        group = { operator: operator, from: leg.stations[0], to: leg.stations[leg.stations.length - 1], km: leg.km };
+        groups.push(group);
+      } else {
+        group.to = leg.stations[leg.stations.length - 1];
+        group.km += leg.km;
+      }
+    });
+    return groups.reduce(function (sum, group) {
+      var fare = group.operator === 'Maha-Metro' ? chartFare(group.from, group.to) : null;
+      // Planned Line 3 is not on Maha-Metro's chart; its slab fare is estimated.
+      return sum + (fare === null ? metroFare(group.km) : fare);
+    }, 0);
   }
 
   function isWeekend(date) { var d = date.getDay(); return d === 0 || d === 6; }
@@ -132,11 +156,12 @@
 
   function segmentMin(line, km) { return km / SPEED[line] * 60 + CONFIG.dwellMin; }
 
-  function buildGraph(headway) {
+  function buildGraph(headway, opts) {
     var g = {};
     function edge(from, to, w) { (g[from] = g[from] || []).push({ to: to, w: w }); }
 
     Object.keys(LINES).forEach(function (line) {
+      if (LINES[line].status === 'planned' && !(opts && opts.planned)) return;
       var st = LINES[line].stations;
       for (var i = 0; i + 1 < st.length; i++) {
         var w = segmentMin(line, SEGMENTS[line][i]);
@@ -146,7 +171,7 @@
     });
 
     Object.keys(STATIONS).forEach(function (id) {
-      var ls = linesAt(id);
+      var ls = linesAt(id, opts);
       ls.forEach(function (a) {
         ls.forEach(function (b) {
           if (a !== b) edge(a + '|' + id, b + '|' + id, CONFIG.transferMin + headway / 2);
@@ -161,10 +186,10 @@
     station(fromId); station(toId);
     if (fromId === toId) return null;
     var headway = (opts && opts.headwayMin) || CONFIG.offPeakHeadwayMin;
-    var g = buildGraph(headway);
+    var g = buildGraph(headway, opts);
 
     var dist = {}, prev = {}, done = {}, queue = [];
-    linesAt(fromId).forEach(function (l) { var n = l + '|' + fromId; dist[n] = 0; queue.push(n); });
+    linesAt(fromId, opts).forEach(function (l) { var n = l + '|' + fromId; dist[n] = 0; queue.push(n); });
 
     var target = null;
     while (queue.length) {
@@ -222,20 +247,17 @@
       rideMin: rideMin,
       stops: stops,
       transfers: legs.length - 1,
-      fare: fareFor(legs[0].stations[0], legs[legs.length - 1].stations[legs[legs.length - 1].stations.length - 1], totalKm)
+      fare: operatorFare(legs)
     };
-  }
-
-  function fareFor(fromId, toId, km) {
-    var f = chartFare(fromId, toId);
-    return f === null ? metroFare(km) : f;
   }
 
   /* ------------------------------------------------------------------
    * First / last mile
    * ------------------------------------------------------------------ */
-  function nearestStations(place, k) {
+  function nearestStations(place, k, opts) {
+    if (k && typeof k === 'object') { opts = k; k = 3; }
     return Object.keys(STATIONS)
+      .filter(function (id) { return linesAt(id, opts).length > 0; })
       .map(function (id) { return { id: id, km: roadKm(place, station(id)) }; })
       .sort(function (a, b) { return a.km - b.km; })
       .slice(0, k || 3);
@@ -265,15 +287,16 @@
   /* ------------------------------------------------------------------
    * Door-to-door planning.
    * A place is { name, lat, lng } or { stationId }.
-   * opts: { date: Date, mile: 'auto' | 'cycle' | 'walk', pass: 'regular' | 'card' | 'student' }
+   * opts: { date: Date, mile: 'auto' | 'cycle' | 'walk', pass: 'regular' | 'card' | 'student', planned: boolean }
    * ------------------------------------------------------------------ */
   function toPlace(p) {
     if (p.stationId) { var s = station(p.stationId); s.stationId = s.id; return s; }
     return p;
   }
 
-  function candidates(place) {
-    return place.stationId ? [{ id: place.stationId, km: 0 }] : nearestStations(place, 3);
+  function candidates(place, opts) {
+    if (place.stationId) return linesAt(place.stationId, opts).length ? [{ id: place.stationId, km: 0 }] : [];
+    return nearestStations(place, 3, opts);
   }
 
   function planTrip(originIn, destIn, opts) {
@@ -284,9 +307,9 @@
     var headway = service.headwayMin;
 
     var options = [];
-    candidates(origin).forEach(function (o) {
-      candidates(dest).forEach(function (d) {
-        var r = route(o.id, d.id, { headwayMin: headway });
+    candidates(origin, opts).forEach(function (o) {
+      candidates(dest, opts).forEach(function (d) {
+        var r = route(o.id, d.id, { headwayMin: headway, planned: opts.planned });
         if (!r) return;
         var first = mileLeg(o.km, mile, peak), last = mileLeg(d.km, mile, peak);
         var waitMin = CONFIG.stationEntryMin + headway / 2 + (service.startsInMin || 0);

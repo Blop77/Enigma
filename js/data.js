@@ -45,7 +45,32 @@
     'bund-garden':       ['Bund Garden',                18.5385, 73.8850],
     'yerawada':          ['Yerawada',                   18.5460, 73.8920],
     'kalyani-nagar':     ['Kalyani Nagar',              18.5480, 73.9010],
-    'ramwadi':           ['Ramwadi',                    18.5530, 73.9110]
+    'ramwadi':           ['Ramwadi',                    18.5530, 73.9110],
+
+    // The Line 3 station list and every coordinate below are UNVERIFIED estimates.
+    // Please verify each station location on a map before treating it as official.
+    'megapolis-circle':  ['Megapolis Circle',           18.5910, 73.6900],
+    'embassy-quadron':   ['Embassy Quadron',            18.5910, 73.7020],
+    'dohler':            ['Dohler',                     18.5910, 73.7110],
+    'infosys-phase-ii':  ['Infosys Phase II',           18.5900, 73.7190],
+    'wipro-phase-ii':    ['Wipro Phase II',             18.5890, 73.7290],
+    'pall-india':        ['Pall India',                 18.5880, 73.7380],
+    'shivaji-chowk':     ['Shivaji Chowk',              18.5870, 73.7460],
+    'hinjewadi':         ['Hinjewadi',                  18.5850, 73.7570],
+    'wakad-chowk':       ['Wakad Chowk',                18.5820, 73.7700],
+    'balewadi-stadium':  ['Balewadi Stadium',            18.5775, 73.7735],
+    'nicmar':            ['NICMAR',                     18.5710, 73.7790],
+    'ram-nagar':         ['Ram Nagar',                  18.5660, 73.7840],
+    'laxmi-nagar':       ['Laxmi Nagar',                18.5610, 73.7900],
+    'balewadi-phata':    ['Balewadi Phata',             18.5570, 73.7950],
+    'baner-gaon':        ['Baner Gaon',                 18.5540, 73.8010],
+    'baner':             ['Baner',                      18.5590, 73.8080],
+    'krishi-anusandhan': ['Krishi Anusandhan',          18.5580, 73.8150],
+    'sakal-nagar':       ['Sakal Nagar',                18.5580, 73.8220],
+    'pune-university':   ['Pune University',            18.5536, 73.8247],
+    'rbi':               ['RBI',                        18.5460, 73.8320],
+    'agriculture-college':['Agriculture College',       18.5370, 73.8420],
+    'shivajinagar':      ['Shivajinagar',               18.5310, 73.8490]
   };
 
   // Station names in Marathi, so riders can search the way they read signboards.
@@ -59,7 +84,15 @@
     'garware-college': 'गरवारे कॉलेज', 'deccan': 'डेक्कन जिमखाना', 'sambhaji-udyan': 'छत्रपती संभाजी उद्यान',
     'pmc': 'पीएमसी', 'mangalwar-peth': 'मंगळवार पेठ', 'pune-station': 'पुणे रेल्वे स्थानक',
     'ruby-hall': 'रुबी हॉल क्लिनिक', 'bund-garden': 'बंड गार्डन', 'yerawada': 'येरवडा',
-    'kalyani-nagar': 'कल्याणीनगर', 'ramwadi': 'रामवाडी'
+    'kalyani-nagar': 'कल्याणीनगर', 'ramwadi': 'रामवाडी',
+    'megapolis-circle': 'मेगापोलिस सर्कल', 'embassy-quadron': 'एम्बसी क्वाड्रन',
+    'dohler': 'डोलेर', 'infosys-phase-ii': 'इन्फोसिस फेज २', 'wipro-phase-ii': 'विप्रो फेज २',
+    'pall-india': 'पॅल इंडिया', 'shivaji-chowk': 'शिवाजी चौक', 'hinjewadi': 'हिंजवडी',
+    'wakad-chowk': 'वाकड चौक', 'balewadi-stadium': 'बालेवाडी स्टेडियम', 'nicmar': 'निक्समार',
+    'ram-nagar': 'राम नगर', 'laxmi-nagar': 'लक्ष्मी नगर', 'balewadi-phata': 'बालेवाडी फाटा',
+    'baner-gaon': 'बाणेर गाव', 'baner': 'बाणेर', 'krishi-anusandhan': 'कृषी अनुसंधान',
+    'sakal-nagar': 'सकाळ नगर', 'pune-university': 'पुणे विद्यापीठ', 'rbi': 'आरबीआय',
+    'agriculture-college': 'ॲग्रीकल्चर कॉलेज', 'shivajinagar': 'शिवाजीनगर'
   };
 
   // Stations in running order. Shared ids are interchanges.
@@ -72,6 +105,8 @@
       name: 'Purple Line',
       short: 'Line 1',
       color: '#8e3fa8',
+      status: 'open',
+      operator: 'Maha-Metro',
       lengthKm: 17.5,
       runMin: 34,
       stations: ['pcmc', 'sant-tukaram-nagar', 'bhosari', 'kasarwadi', 'phugewadi', 'dapodi',
@@ -82,11 +117,28 @@
       name: 'Aqua Line',
       short: 'Line 2',
       color: '#0fa3b1',
+      status: 'open',
+      operator: 'Maha-Metro',
       lengthKm: 14.5,
       runMin: 37,
       stations: ['vanaz', 'anand-nagar', 'ideal-colony', 'nal-stop', 'garware-college', 'deccan',
                  'sambhaji-udyan', 'pmc', 'civil-court', 'mangalwar-peth', 'pune-station',
                  'ruby-hall', 'bund-garden', 'yerawada', 'kalyani-nagar', 'ramwadi']
+    },
+    line3: {
+      name: 'Line 3',
+      short: 'Line 3',
+      color: '#e0457b',
+      status: 'planned',
+      operator: 'PMRDA',
+      lengthKm: 23.3,
+      // 45 min is an estimate based on Purple Line average speed; replace with official time.
+      runMin: 45,
+      stations: ['megapolis-circle', 'embassy-quadron', 'dohler', 'infosys-phase-ii', 'wipro-phase-ii',
+                 'pall-india', 'shivaji-chowk', 'hinjewadi', 'wakad-chowk', 'balewadi-stadium',
+                 'nicmar', 'ram-nagar', 'laxmi-nagar', 'balewadi-phata', 'baner-gaon', 'baner',
+                 'krishi-anusandhan', 'sakal-nagar', 'pune-university', 'rbi', 'agriculture-college',
+                 'shivajinagar', 'civil-court']
     }
   };
 
@@ -217,6 +269,7 @@
   };
 
   var CONFIG = {
+    savingsCardSize: 1080,
     // Fallback fare by trip distance (km, inclusive upper bound -> rupees), used only
     // for station pairs missing from FARE_CHART (e.g. a future line).
     fareSlabs: [[1, 10], [2, 15], [4, 20], [8, 25], [16, 30], [Infinity, 35]],

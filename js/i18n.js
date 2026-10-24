@@ -31,8 +31,8 @@
     'nav.label': ['Views', 'दृश्ये'],
     'tab.gap': ['🗺️ Gap Map <small>for the city</small>', '🗺️ गॅप मॅप <small>शहरासाठी</small>'],
     'tab.plan': ['🧭 Trip planner <small>for riders</small>', '🧭 प्रवास नियोजक <small>प्रवाशांसाठी</small>'],
-    'footer': ['Fares, timings, coordinates and road costs are <strong>estimates</strong> for planning, not official Maha-Metro data. Feeders are a simulation. Built for the Pune Metro hackathon · Urban mobility.',
-               'भाडे, वेळा, ठिकाणांचे निर्देशांक व रस्ते प्रवासाचा खर्च हे नियोजनासाठीचे <strong>अंदाज</strong> आहेत, महा-मेट्रोची अधिकृत माहिती नाही. फीडर हे केवळ सिम्युलेशन आहे. पुणे मेट्रो हॅकेथॉनसाठी तयार केले · शहरी वाहतूक.'],
+    'footer': ['Lines 1–2 fares and operating times use Maha-Metro sources. Line 3 run time and station locations, road costs, emissions and feeder assumptions are <strong>estimates</strong>. Feeders are simulated. Built for the Pune Metro hackathon · Urban mobility.',
+               'लाईन 1 व 2 चे भाडे आणि गाडीच्या वेळा महा-मेट्रोच्या स्रोतांवर आधारित आहेत. लाईन 3 चा प्रवास वेळ व स्टेशनचे निर्देशांक, रस्ते खर्च, उत्सर्जन व फीडरविषयक गृहितके हे <strong>अंदाज</strong> आहेत. फीडर हे सिम्युलेशन आहे. पुणे मेट्रो हॅकेथॉनसाठी तयार केले · शहरी वाहतूक.'],
 
     // Units
     'unit.min': ['min', 'मि.'],
@@ -44,6 +44,7 @@
     // Lines, modes, tickets
     'line.purple': ['Purple Line', 'पर्पल लाईन'],
     'line.aqua': ['Aqua Line', 'ॲक्वा लाईन'],
+    'line.line3': ['Line 3', 'मेट्रो लाईन 3'],
     'mode.auto': ['auto', 'रिक्षा'],
     'mode.cycle': ['cycle', 'सायकल'],
     'pass.regular': ['Regular', 'साधे तिकीट'],
@@ -148,6 +149,16 @@
     'sav.saved': ['saved vs auto', 'रिक्षाच्या तुलनेत बचत'],
     'sav.co2': ['CO₂ avoided', 'CO₂ टाळला'],
     'sav.all': ['All time: {n} trips · {rs} · {co2}', 'आजपर्यंत: {n} प्रवास · {rs} · {co2}'],
+    'sav.card.button': ['📸 Share my savings card', '📸 माझे बचतीचे कार्ड शेअर करा'],
+    'sav.card.brand': ['MetroMitra · मेट्रोमित्र', 'MetroMitra · मेट्रोमित्र'],
+    'sav.card.url': ['blop77.github.io/metro-mitra', 'blop77.github.io/metro-mitra'],
+    'sav.card.preview': ['Savings card preview', 'बचत कार्ड पूर्वावलोकन'],
+    'sav.card.tagline': ['by taking Pune Metro instead of an auto', 'रिक्षाऐवजी पुणे मेट्रोने प्रवास करून'],
+    'sav.card.trips': ['trips this month', 'या महिन्यातील प्रवास'],
+    'sav.card.footer': ['Better last-mile trips, one ride at a time', 'प्रत्येक प्रवासातून मेट्रोचा वापर वाढवूया'],
+    'sav.card.shareText': ['My metro savings: {rs} saved and {co2} CO₂ avoided this month. blop77.github.io/metro-mitra',
+      'माझी मेट्रो बचत: या महिन्यात {rs} बचत आणि {co2} CO₂ कमी. blop77.github.io/metro-mitra'],
+    'sav.card.error': ['Could not create the savings card. Try again.', 'बचतीचे कार्ड तयार करता आले नाही. पुन्हा प्रयत्न करा.'],
 
     // Gap Map
     'gap.controls': ['Gap Map controls', 'गॅप मॅप पर्याय'],
@@ -158,6 +169,11 @@
     'gap.hub': ['Getting to', 'कुठे जायचे'],
     'gap.allHubs': ['All {n} major hubs', 'सर्व {n} प्रमुख ठिकाणे'],
     'gap.time': ['Time', 'वेळ'],
+    'gap.includeLine3': ['Include Line 3 (planned)', 'मेट्रो लाईन 3 (नियोजित) समाविष्ट करा'],
+    'gap.line3Change.all': ['With Line 3, the metro wins for {after}% of the area, up from {before}% without it.',
+      'मेट्रो लाईन 3 समाविष्ट केल्यावर {after}% भागात मेट्रो फायदेशीर ठरते; त्याशिवाय हे प्रमाण {before}% आहे.'],
+    'gap.line3Change.hub': ['For <b>{hub}</b>, Line 3 raises the metro-win area from {before}% to {after}%.',
+      '<b>{hub}</b> येथे मेट्रो लाईन 3 मुळे मेट्रो फायदेशीर ठरणारा भाग {before}% वरून {after}% होतो.'],
     'gap.peak': ['Peak', 'गर्दीची वेळ'],
     'gap.off': ['Off-peak', 'कमी गर्दी'],
     'gap.when.peak': ['at peak hour', 'गर्दीच्या वेळी'],

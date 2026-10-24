@@ -8,6 +8,9 @@
 
   const { STATIONS, STATIONS_MR, STATION_ALIASES, LINES, LANDMARKS, LANDMARKS_MR, CONFIG } = MetroData;
   const P = MetroPlanner, I = I18N, t = I18N.t;
+  const Savings = MetroSavings;
+  const OPEN_STATION_IDS = Object.keys(STATIONS).filter((id) => P.linesAt(id).length > 0);
+  const OPEN_LINE_IDS = Object.keys(LINES).filter((id) => LINES[id].status !== 'planned');
   const STORE_KEY = 'metromitra-v1';
   const LANG_KEY = 'metromitra-lang';
   const MILE_ICON = { walk: '🚶', auto: '🛺', cycle: '🚲' };
@@ -19,13 +22,16 @@
   let myLocation = null;     // { lat, lng } once the user shares GPS
   let pickNext = 'from';     // which field a tap on the map fills
   let trips = [];            // logged trips: { t, from, to, cost, autoCost, co2SavedG } (English names)
+  let cardPreviewVisible = false;
+  let cardPreviewUrl = null;
+  let cardRenderId = 0;
 
   /* ------------------------------------------------------------------
    * Places: stations + landmarks, resolved from free text in either
    * language. The datalist only suggests names in the current language.
    * ------------------------------------------------------------------ */
   const PLACES = [];
-  Object.keys(STATIONS).forEach((id) => {
+  OPEN_STATION_IDS.forEach((id) => {
     PLACES.push({ label: STATIONS[id][0], lang: 'en', place: { stationId: id } });
     if (STATIONS_MR[id]) PLACES.push({ label: STATIONS_MR[id], lang: 'mr', place: { stationId: id } });
     // Other names (e.g. "Paud Phata", "Kasba Peth") resolve but stay out of the suggestion list.
@@ -248,7 +254,7 @@
   }
 
   function drawMap(trip) {
-    const pts = Object.keys(STATIONS).map((id) => ({ lat: STATIONS[id][1], lng: STATIONS[id][2] }));
+    const pts = OPEN_STATION_IDS.map((id) => ({ lat: STATIONS[id][1], lng: STATIONS[id][2] }));
     if (trip) {
       if (!trip.origin.stationId) pts.push(trip.origin);
       if (!trip.dest.stationId) pts.push(trip.dest);
@@ -266,7 +272,7 @@
     mapEl.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
     mapEl.classList.toggle('has-route', !!(trip && trip.best));
 
-    Object.keys(LINES).forEach((line) => {
+    OPEN_LINE_IDS.forEach((line) => {
       el('polyline', { class: 'track', stroke: LINES[line].color,
         points: LINES[line].stations.map((id) => sxy(id).join(',')).join(' ') }, mapEl);
     });
@@ -287,7 +293,7 @@
     const selected = new Set();
     [fromIn.value, toIn.value].forEach((v) => { const p = resolve(v); if (p && p.stationId) selected.add(p.stationId); });
 
-    Object.keys(STATIONS).forEach((id) => {
+    OPEN_STATION_IDS.forEach((id) => {
       const [x, y] = sxy(id), lines = P.linesAt(id), xchg = lines.length > 1;
       const st = LINES[lines[0]].stations;
       const terminal = lines.length === 1 && (st[0] === id || st[st.length - 1] === id);
@@ -322,7 +328,7 @@
   function lineAttrs(a, b) { return { x1: a[0], y1: a[1], x2: b[0], y2: b[1], class: 'mile' }; }
 
   function drawLegend() {
-    $('#legend').innerHTML = Object.keys(LINES).map((l) =>
+    $('#legend').innerHTML = OPEN_LINE_IDS.map((l) =>
       '<span><i style="background:' + LINES[l].color + '"></i>' + I.line(l) + '</span>').join('');
   }
 
@@ -357,30 +363,31 @@
     renderSavings();
   }
 
-  function totals(list) {
-    return list.reduce((s, x) => ({ n: s.n + 1, rs: s.rs + x.autoCost - x.cost, co2: s.co2 + x.co2SavedG }),
-                       { n: 0, rs: 0, co2: 0 });
-  }
-
   function renderSavings() {
+    const renderId = ++cardRenderId;
     const body = $('#savings-body');
     $('#clear-trips').hidden = !trips.length;
     if (!trips.length) {
+      cardPreviewVisible = false;
       body.innerHTML = '<p class="empty">' + t('sav.empty') + '</p>';
       return;
     }
     const now = new Date();
-    const month = trips.filter((x) => {
-      const d = new Date(x.t);
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    });
-    const m = totals(month), all = totals(trips);
-    const monthName = now.toLocaleString(I.locale(), { month: 'long' });
+    const month = Savings.monthTrips(trips, now), card = Savings.cardData(trips, now);
+    const m = Savings.totals(month), all = Savings.totals(trips);
+    const monthName = card.month;
+    if (!card.n) cardPreviewVisible = false;
+    const cardControls = card.n ? '<div class="savings-card-controls">' +
+      '<button type="button" class="primary small-btn" id="save-card">' + t('sav.card.button') + '</button>' +
+      '<p id="card-error" class="error" role="alert" hidden></p>' +
+      '<div id="card-preview" class="savings-card-preview" hidden><img id="card-preview-image" alt="' +
+      esc(t('sav.card.preview')) + '"></div></div>' : '';
     body.innerHTML = '<div class="summary">' +
       '<div class="stat"><b>' + m.n + '</b><small>' + esc(t('sav.month', { n: m.n, month: monthName })) + '</small></div>' +
       '<div class="stat"><b>' + fmtRs(Math.max(0, m.rs)) + '</b><small>' + t('sav.saved') + '</small></div>' +
       '<div class="stat"><b>' + fmtCo2(Math.max(0, m.co2)) + '</b><small>' + t('sav.co2') + '</small></div>' +
       '</div>' +
+      cardControls +
       (all.n > m.n ? '<p class="alt">' + t('sav.all', { n: all.n, rs: fmtRs(Math.max(0, all.rs)), co2: fmtCo2(Math.max(0, all.co2)) }) + '</p>' : '') +
       '<ul class="trip-log">' + trips.slice(-5).reverse().map((x) => {
         const d = new Date(x.t), save = x.autoCost - x.cost;
@@ -388,6 +395,52 @@
           esc(I.place(x.from)) + ' → ' + esc(I.place(x.to)) + '</span><span class="' + (save > 0 ? 'gain' : 'loss') + '">' +
           (save > 0 ? '+' + fmtRs(save) : fmtRs(x.cost)) + '</span></li>';
       }).join('') + '</ul>';
+    const button = $('#save-card');
+    if (button) button.addEventListener('click', () => {
+      cardPreviewVisible = true;
+      createSavingsCard(card, true, ++cardRenderId);
+    });
+    if (card.n && cardPreviewVisible) createSavingsCard(card, false, renderId);
+  }
+
+  async function createSavingsCard(data, shareOrDownload, renderId) {
+    const button = $('#save-card'), error = $('#card-error');
+    if (button) button.disabled = true;
+    if (error) error.hidden = true;
+    try {
+      if (document.fonts && document.fonts.ready) await document.fonts.ready;
+      const canvas = document.createElement('canvas');
+      MetroSavingsCard.drawCard(canvas, data);
+      const blob = await MetroSavingsCard.toBlob(canvas);
+      if (!cardPreviewVisible || renderId !== cardRenderId) return;
+      if (cardPreviewUrl) URL.revokeObjectURL(cardPreviewUrl);
+      cardPreviewUrl = URL.createObjectURL(blob);
+      const image = $('#card-preview-image'), preview = $('#card-preview');
+      if (!image || !preview) return;
+      image.src = cardPreviewUrl;
+      image.alt = t('sav.card.preview');
+      preview.hidden = false;
+      if (!shareOrDownload) return;
+
+      const month = String(new Date().getMonth() + 1).padStart(2, '0');
+      const file = new File([blob], 'metromitra-savings-' + data.year + '-' + month + '.png', { type: 'image/png' });
+      if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], text: t('sav.card.shareText', {
+          rs: fmtRs(data.rs), co2: fmtCo2(data.co2)
+        }) });
+      } else {
+        const link = document.createElement('a'), downloadUrl = URL.createObjectURL(blob);
+        link.href = downloadUrl;
+        link.download = file.name;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+      }
+    } catch (err) {
+      if (err && err.name === 'AbortError') return;
+      if (error) { error.textContent = t('sav.card.error'); error.hidden = false; }
+    } finally {
+      if (renderId === cardRenderId && button && button.isConnected) button.disabled = false;
+    }
   }
 
   /* ------------------------------------------------------------------
@@ -507,7 +560,6 @@
     drawLegend();
     if (!rerender) return;
     errorEl.hidden = true;
-    renderSavings();
     if (!resultsEl.hidden) plan(true);
     else { renderService(departure()); drawMap(null); }
     document.dispatchEvent(new CustomEvent('mm:lang', { detail: I.lang }));
@@ -592,6 +644,8 @@
     fmtMin, fmtRs, fmtKm, fmtCo2, esc, showView, planFrom,
     get view() { return view; }
   };
+
+  document.addEventListener('mm:lang', renderSavings);
 
   init();
 

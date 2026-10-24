@@ -27,6 +27,19 @@ test('Grid covers the city around the network', () => {
   assert.ok(G.cellKm2() > 0.5 && G.cellKm2() < 1.5);
 });
 
+test('Planned-only Line 3 stations are excluded unless planned routes are enabled', () => {
+  assert.strictEqual(P.route('hinjewadi', 'civil-court'), null);
+  assert.ok(!state.cells.some(cell => cell.near.some(n => n.id === 'hinjewadi')));
+  const planned = G.build({ peak: true, planned: true });
+  assert.ok(planned.cells.some(cell => cell.near.some(n => n.id === 'hinjewadi')));
+});
+
+test('Line 3 improves peak-hour access to Hinjewadi', () => {
+  const planned = G.build({ peak: true, planned: true });
+  const idx = planned.hubs.findIndex(h => h.name === 'Hinjewadi Phase 1');
+  assert.ok(G.summary(planned, idx).goodPct > G.summary(state, idx).goodPct);
+});
+
 test('Gap Map agrees with the trip planner for the same trip', () => {
   const peak = new Date(2026, 9, 23, 9, 0);   // Friday 09:00, regular ticket
   let checked = 0;
@@ -44,6 +57,27 @@ test('Gap Map agrees with the trip planner for the same trip', () => {
     });
   }
   assert.ok(checked > 50, checked + ' trips checked');
+});
+
+test('Gap Map and planner agree when planned Line 3 is enabled', () => {
+  const planned = G.build({ peak: true, planned: true });
+  const peak = new Date(2026, 9, 23, 9, 0);
+  let checked = 0;
+  for (let i = 0; i < planned.cells.length; i += 53) {
+    planned.hubs.forEach((hub, j) => {
+      const g = planned.trips[i][j];
+      if (!g) return;
+      const cell = planned.cells[i];
+      const p = P.planTrip({ name: 'cell', lat: cell.lat, lng: cell.lng },
+                           hub.stationId ? { stationId: hub.stationId } : hub,
+                           { date: peak, planned: true });
+      assert.ok(Math.abs(p.best.min - g.metro.min) < 1e-6, 'time ' + i + '/' + hub.name);
+      assert.strictEqual(p.best.cost, g.metro.cost);
+      assert.strictEqual(p.verdict.kind, g.kind);
+      checked++;
+    });
+  }
+  assert.ok(checked > 50, checked + ' planned trips checked');
 });
 
 test('Short trips are left out', () => {

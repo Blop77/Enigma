@@ -270,6 +270,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid var(--brand); out
 #gap-map .cell.none { fill: var(--line); }
 #gap-map .cell.sel { opacity: 1; stroke: var(--ink); stroke-width: 2; }
 #gap-map .track { fill: none; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+#gap-map .planned-track { stroke-width: 1.5; stroke-dasharray: 5 5; opacity: .9; }
 #gap-map .stn { fill: var(--panel); stroke-width: 2.5; cursor: pointer; }
 #gap-map .stn:hover { stroke-width: 4; }
 #gap-map .stn.feeder { fill: var(--good); stroke: var(--panel); }
@@ -297,5 +298,11 @@ input:focus-visible, button:focus-visible { outline: 2px solid var(--brand); out
   #gap-map { max-width: 520px; margin: 0 auto; }
 }
 .hub-key { width: 8px !important; height: 8px !important; transform: rotate(45deg); background: var(--ink); }
+.planned-toggle { display: flex; align-items: center; }
+.planned-toggle label { display: flex; align-items: center; gap: 6px; text-transform: none; letter-spacing: 0; cursor: pointer; }
+.planned-toggle input { accent-color: #e0457b; }
+.savings-card-controls { display: grid; justify-items: start; gap: 10px; margin: 16px 0; }
+.savings-card-preview { width: min(100%, 420px); }
+.savings-card-preview img { display: block; width: 100%; height: auto; border-radius: 12px; box-shadow: 0 4px 18px #241a2b24; }
 
 .foot { max-width: 1200px; margin: 0 auto; padding: 0 16px 24px; font-size: 12px; color: var(--muted); }

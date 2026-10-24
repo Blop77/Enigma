@@ -29,7 +29,7 @@ test('Both languages use the same placeholders', () => {
 });
 
 test('Marathi strings are actually in Marathi', () => {
-  const sameInBoth = ['res.co2'];   // "CO₂" is written the same way
+  const sameInBoth = ['res.co2', 'sav.card.url', 'sav.card.brand'];   // CO₂, URL and bilingual brand stay identical in both languages
   Object.entries(I.STRINGS).forEach(([key, [en, mr]]) => {
     if (sameInBoth.includes(key)) return;
     // The language button speaks the *other* language, so a reader of that language can find it.
@@ -75,7 +75,7 @@ test('Every key used in index.html exists', () => {
 });
 
 test('Every key used in the UI scripts exists', () => {
-  const src = read('js/app.js') + read('js/gap-ui.js');
+  const src = read('js/app.js') + read('js/gap-ui.js') + read('js/savings-card.js');
   // Literal keys only; keys built at run time ('step.first.' + mode) are checked below.
   const keys = [...src.matchAll(/\bt\('([\w.]+)'/g), ...src.matchAll(/showError\('([\w.]+)'\)/g)]
     .map((m) => m[1]).filter((k) => !k.endsWith('.'));
@@ -92,7 +92,7 @@ test('Every key used in the UI scripts exists', () => {
 });
 
 test('Every string in the dictionary is used', () => {
-  const src = read('js/app.js') + read('js/gap-ui.js') + read('index.html');
+  const src = read('js/app.js') + read('js/gap-ui.js') + read('js/savings-card.js') + read('index.html');
   const dynamic = /^(step\.(first|last)\.|mode\.|pass\.|line\.|kind\.)/;
   Object.keys(I.STRINGS).forEach((k) => {
     const base = k.endsWith('.one') ? k.slice(0, -4) : k;
