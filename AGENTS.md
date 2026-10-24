@@ -28,6 +28,14 @@ node tests/i18n.test.js        # must pass: catches missing keys and untranslate
 npx serve .                    # then open http://localhost:3000
 ```
 
+## Data rules (official Maha-Metro sources)
+
+- **Fares** for Lines 1 and 2 come only from `FARE_CHART` (Maha-Metro's official station-to-station chart, row = from, column = to) via `MetroPlanner.chartFare`. Never compute them from distance. `CONFIG.fareSlabs` is only a fallback for stations not on the chart. The 10 pairs in `FARE_ASYMMETRIC` are printed differently each way on the official chart; keep them as printed.
+- **Running times** come from each line's `runMin` (official end-to-end time) and `lengthKm`; the planner derives each line's speed from them. A new line needs both.
+- **Timetable** (w.e.f. 15 Aug 2025): 06:00–23:00; every 6 min at peak (08:00–11:00, 16:00–20:00), every 10 min otherwise.
+- **Stations**: Range Hill is built but not open, so it is not a stop. The interchange's id is `civil-court`; its official name is **District Court** (Civil Court is a search alias in `STATION_ALIASES`).
+- Coordinates, auto/cab tariffs, road speeds, CO₂ and the feeder model are still estimates.
+
 ## Conventions
 
 - Match the existing style: `'use strict'`, small functions, short comments that explain *why*, `const`/arrow functions in UI files, ES5 style in the engines (they also run in Node via `require`).
