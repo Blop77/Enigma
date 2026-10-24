@@ -373,7 +373,9 @@
     };
     if (opts.accessible) {
       result.accessible = true;
-      result.noStepFree = !best;
+      // Only blame step-free access when stations were actually avoided; otherwise
+      // there is simply no useful metro trip (e.g. both ends share a station).
+      result.noStepFree = !best && !!(opts.avoid && opts.avoid.length);
     }
     return result;
   }

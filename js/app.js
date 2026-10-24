@@ -27,6 +27,7 @@
   let cardPreviewUrl = null;
   let cardRenderId = 0;
   let accessibleOn = false;
+  let mapSxy = null;         // station -> [x, y] for the planner map as last drawn
 
   /* ------------------------------------------------------------------
    * Places: stations + landmarks, resolved from free text in either
@@ -273,6 +274,7 @@
     const H = Math.round((maxLat - minLat) * scale + 2 * pad);
     const xy = (p) => [pad + (p.lng - minLng) * k * scale, pad + (maxLat - p.lat) * scale];
     const sxy = (id) => xy({ lat: STATIONS[id][1], lng: STATIONS[id][2] });
+    mapSxy = sxy;   // the projection changes with each trip; taps must use the current one
 
     mapEl.innerHTML = '';
     mapEl.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
@@ -338,11 +340,11 @@
   // Choose the nearest marker when enlarged station touch targets overlap.
   function nearestMapStation(e) {
     const rect = mapEl.getBoundingClientRect(), scale = rect.width / 600;
-    if (!scale) return null;
+    if (!scale || !mapSxy) return null;
     const x = (e.clientX - rect.left) / scale, y = (e.clientY - rect.top) / scale;
     let best = null, bestDistance = Infinity;
     OPEN_STATION_IDS.forEach((id) => {
-      const p = sxy(id), distance = Math.hypot(p[0] - x, p[1] - y) * scale;
+      const p = mapSxy(id), distance = Math.hypot(p[0] - x, p[1] - y) * scale;
       if (distance < bestDistance) { best = id; bestDistance = distance; }
     });
     return bestDistance <= accessibleTouchRadius() ? best : null;

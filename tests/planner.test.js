@@ -89,6 +89,16 @@ test('Avoiding District Court blocks a cross-line step-free route but not a thro
   assert.strictEqual(through.transfers, 0);
 });
 
+test('No step-free route is reported only when stations were avoided', () => {
+  // Same station at both ends: no metro trip, but not because of step-free access.
+  const same = P.planTrip({ stationId: 'pmc' }, { stationId: 'pmc' }, { date: at(9), accessible: true, avoid: [] });
+  assert.strictEqual(same.best, null);
+  assert.strictEqual(same.noStepFree, false);
+  const blocked = P.planTrip({ stationId: 'pcmc' }, { stationId: 'ramwadi' },
+    { date: at(9), accessible: true, avoid: ['civil-court'] });
+  assert.strictEqual(blocked.noStepFree, true);
+});
+
 test('An avoided station origin boards from another station with a first-mile leg', () => {
   const trip = P.planTrip({ stationId: 'pmc' }, { stationId: 'ramwadi' },
     { date: at(9), accessible: true, avoid: ['pmc'] });
