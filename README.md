@@ -6,6 +6,8 @@ Built for the Pune Metro hackathon · theme **Urban mobility**.
 
 ### ▶ [Live demo: blop77.github.io/metro-mitra](https://blop77.github.io/metro-mitra/) · 🚇 [Ride the story](https://blop77.github.io/metro-mitra/story.html) · 🎬 [Watch the video](https://youtu.be/BBzg8h42e30)
 
+### 📡 [MetroMitra Live: metro-mitra.floot.app](https://metro-mitra.floot.app): live station reports shared between riders, plus the trip planner
+
 ![Urban mobility](https://img.shields.io/badge/theme-urban%20mobility-8e3fa8) ![No build step](https://img.shields.io/badge/build-none-555) ![Tests](https://img.shields.io/badge/tests-89%20passing-2f9e5f) ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
 
 **🎬 The 2-minute walkthrough, with voiceover and subtitles:**
@@ -65,6 +67,10 @@ The pitch as a scroll-driven ride. Scrolling drives a Pune Metro train from PCMC
 - **The scene** is drawn on one canvas with no libraries: hills with Parvati's temples, the city with rooftop water tanks, Shaniwar Wada, the viaduct and overhead wires, stations with bilingual name boards, autos below, and ₹10 feeder e-buses after the Gap Map stop. The sky moves from sunrise to night, and windows light up.
 - **Getting around:** an in-train LED display shows the clock and the next station. The line along the bottom jumps to any stop.
 - **Languages and access:** English and Marathi. It works with the keyboard, with reduced motion, and offline once the app has been opened.
+
+### 📡 MetroMitra Live ([metro-mitra.floot.app](https://metro-mitra.floot.app))
+
+A companion app built on Floot, with a real backend. Riders report "crowded", "lift not working" or "escalator not working" at a station, or "it's fixed", and every open screen updates instantly. Reports expire after 2 hours, and the same report from one device within 10 minutes counts once. Its trip planner uses the same engine and official fare chart as this repo. It warns about live problems only where you board, change or get off, and a step-free option routes around reported broken lifts.
 
 ### 🌐 English / मराठी
 
