@@ -15,6 +15,7 @@ It is plain HTML, CSS and JavaScript with **no build step and no dependencies**,
 | `js/planner.js` | Trip engine: routing, fares, concessions, first/last mile, verdict | No DOM. UMD: works in Node and the browser. |
 | `js/savings.js` | Month filtering and totals for the savings tracker | No DOM. UMD: works in Node and the browser. |
 | `js/reports.js` | Station reports (crowded / lift / escalator) with expiry | No DOM. UMD: works in Node and the browser. A lift report matters only where riders board, change or alight. |
+| `js/assistant.js` | Offline help answers from the app's engines and data | No DOM. UMD: works in Node and the browser. |
 | `js/gapmap.js` | Gap Map engine: grid, scoring, feeders, recommendations | No DOM. Must stay consistent with `planner.js` (a test checks this). |
 | `js/app.js` | Trip planner UI, tabs, savings tracker; exposes `window.MetroMitra` | Browser only. |
 | `js/savings-card.js` | Draws and exports the shareable savings card | Browser only; canvas UI. |
@@ -37,6 +38,7 @@ node tests/gapmap.test.js      # must pass
 node tests/i18n.test.js        # must pass: catches missing keys and untranslated strings
 node tests/savings.test.js     # savings totals and month filtering
 node tests/reports.test.js     # station reports and expiry
+node tests/assistant.test.js   # offline help intents and engine values
 node tests/share.test.js       # share-link encode/decode
 node tests/story.test.js       # the story's numbers match the planner and the Gap Map
 npx serve .                    # then open http://localhost:3000
