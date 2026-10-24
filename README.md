@@ -1,76 +1,104 @@
-# Enigma Machine Simulator
+# MetroMitra · मेट्रोमित्र
 
-An interactive, historically accurate simulator of the German **Enigma** cipher machine used in WWII.
-Encrypt and decrypt your own messages on a machine that looks, clicks and lights up like the real one.
+**Your door-to-door Pune Metro companion.** Built for the Pune Metro hackathon, theme **Urban mobility**.
 
-### ▶ [Live demo: blop77.github.io/Enigma](https://blop77.github.io/Enigma/)
+### ▶ [Live demo: blop77.github.io/metro-mitra](https://blop77.github.io/metro-mitra/)
 
-[![Live demo](https://img.shields.io/badge/live%20demo-open%20the%20simulator-d1ab5c?style=for-the-badge)](https://blop77.github.io/Enigma/)
+![Urban mobility](https://img.shields.io/badge/theme-urban%20mobility-8e3fa8) ![No build step](https://img.shields.io/badge/build-none-555) ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
 
-![Enigma](https://img.shields.io/badge/Enigma-I%20%2F%20M3-c9a356) ![No build step](https://img.shields.io/badge/build-none-555) ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
+[![MetroMitra planning a trip from MIT-WPU to Pune Airport](screenshot.png)](https://blop77.github.io/metro-mitra/)
 
-[![Screenshot of the simulator decrypting a real 1941 message](screenshot.png)](https://blop77.github.io/Enigma/)
+## The problem
 
-## Features
+Pune Metro now runs two lines, but most people still don't use it for everyday trips. People don't avoid it because the metro is slow. They avoid it because the trip is hard to plan:
 
-- **Looks like the real machine:** wooden case, rotor windows with thumbwheels, glowing lampboard, round keys in the German QWERTZ layout, and a plugboard with coloured cables.
-- **Mechanical sounds:** key clacks, rotor ratchet clicks (you can hear the double step), thumbwheel ticks and plugs going in. All sounds are made live with the Web Audio API, with mute and volume controls.
-- **Encrypt and decrypt:** separate tabs with step-by-step instructions. Paste a whole message, or type it letter by letter on the machine.
-- **Animate on the machine:** watch a whole message being typed, with keys going down, lamps lighting up and rotors turning.
-- **Accurate cipher:**
-  - Rotors I–VIII with their real wirings and turnover notches
-  - Reflectors UKW-A, UKW-B and UKW-C
-  - Ring settings (*Ringstellung*) and start positions (*Grundstellung*)
-  - Plugboard (*Steckerbrett*) with up to 13 cables
-  - The middle rotor's "double-stepping" quirk
-- **Signal path view:** shows how the current runs through the plugboard, the three rotors, the reflector and back to a lamp.
-- **Shareable keys:** use *Copy key* / *Load key* to send your settings to a friend as one line of text:
-  `Enigma I | UKW-B | Rotors I II III | Rings 01 01 01 | Start AAA | Plugs AB CD`
-- **A real 1941 message:** one click loads a genuine German Army message from Operation Barbarossa and its key, ready for you to decrypt.
-- **Authentic output formats:** groups of five letters, with X in place of spaces, just like real operators wrote them.
-- Works on desktop and mobile, supports your physical keyboard, and remembers your settings between visits.
+- *Which* station is nearest to my college/office, and is it on the line I need?
+- Do I have to change at Civil Court? Which platform, which direction?
+- How much does the **whole** trip cost once I add the auto to and from the station?
+- Is it actually better than just taking an auto?
 
-## How to run it
+Google Maps answers some of this, but it doesn't put the metro next to the road options in rupees, minutes and CO₂, and it doesn't tell you plainly when the metro is the *wrong* choice.
 
-It's plain HTML, CSS and JavaScript. There's no build step and nothing to install.
+## What MetroMitra does
 
-- **Online:** open the live demo at **https://blop77.github.io/Enigma/**. It is hosted on GitHub Pages and redeploys automatically whenever `main` changes.
-- **Locally:** download the repo and open `index.html` in any modern browser.
+Type where you are and where you're going: a station, a college, a landmark, or 📍 your GPS location. You get:
 
-## How to use it
+1. **A door-to-door plan:** first mile (walk / auto / cycle) → board the right line in the right direction → change at Civil Court if needed → last mile, with clock times for every step.
+2. **The real total cost:** metro fare plus first and last mile, not just the ticket.
+3. **An honest verdict:** "Metro wins: ₹155 cheaper and 2 min faster than an auto", or "For this trip an auto is the better deal".
+4. **A side-by-side comparison:** metro vs auto vs cab, by time, cost and CO₂.
+5. **Concession fares:** student (30% off every day) and One Pune card / e-ticket (10% off on weekdays, 30% on weekends).
+6. **Live service status:** running, peak/off-peak frequency, closed, or "opens in 20 min".
+7. **An interactive network map:** tap two stations to plan; the route and first/last mile are drawn on it.
+8. **My metro savings:** tap "I took this trip" and MetroMitra keeps a monthly total of the rupees and CO₂ you saved compared with an auto. It's stored only on your phone.
+9. **Works offline:** it's an installable web app (PWA) that keeps planning underground with no signal.
+10. **Shareable trip links:** send a friend `…#from=MIT-WPU&to=Pune Airport`.
 
-1. **Agree on a key.** Both people set the same *Machine settings*: rotors, rings, start position, reflector and plugboard. *🎲 Random key* followed by *📋 Copy key* is the easiest way.
-2. **Encrypt.** On the 🔒 Encrypt tab, type your message and press **Encrypt message**. Send the result.
-3. **Decrypt.** The receiver loads the same key (*📥 Load key*), opens the 🔓 Decrypt tab, pastes the ciphertext and presses **Decrypt message**.
+It tries up to 3 stations near each end of the trip (9 combinations) and picks the fastest door to door. So it will happily tell you to walk 10 minutes to a different station if that skips an interchange.
 
-Enigma is *reciprocal*: running the ciphertext through a machine with the same settings gives back the plaintext. Every message starts from the configured start position, so encrypting and decrypting always line up.
-
-**Tip:** before you type anything, turning the rotor thumbwheels also sets the start position. After you've typed, press **Reset** to return to it.
-
-## Project structure
+## How it works
 
 ```
-index.html            page layout and the guide
-css/style.css         all styling (the machine is pure CSS, no images)
-js/enigma.js          the cipher engine (works in browser and Node.js)
-js/sound.js           synthesised mechanical sound effects
-js/app.js             user interface: keys, lamps, rotors, plugboard, messages
-tests/enigma.test.js  engine tests against known historical values
+js/data.js       Network (29 stations, 2 lines), 28 landmarks, every tunable number
+js/planner.js    Engine: Dijkstra routing, fares, first/last mile, comparison (no DOM; runs in Node)
+js/app.js        UI: form, results timeline, SVG map, GPS, savings tracker, share links
+sw.js            Service worker: caches the app for offline use
+manifest.webmanifest, icons/   Installable app metadata and icons
+tests/           node tests/planner.test.js
 ```
 
-## Tests
+- **Routing:** the graph has one node per *(line, station)*, so changing lines at Civil Court costs real time (platform walk + half a headway of waiting). Dijkstra finds the fastest route.
+- **Distances:** straight-line gaps between station coordinates, scaled so each line adds up to its published length (Purple 16.59 km, Aqua 14.66 km).
+- **Fares:** distance slabs ₹10–₹35, then any concession for the trip's date. Autos: Pune RTA-style meter (minimum fare for the first 1.5 km, then per km). Road distance ≈ 1.3 × straight line, and traffic is slower in peak hours.
+
+### Where the numbers come from
+
+| Data | Value used | Source / confidence |
+|---|---|---|
+| Fare slabs | ≤1 km ₹10, ≤2 ₹15, ≤4 ₹20, ≤8 ₹25, ≤16 ₹30, more ₹35 | Third-party guides; matches published trip fares (Swargate–Vanaz ₹30, Ramwadi–PCMC ₹35) |
+| Concessions | Student 30% daily; card/e-ticket 10% weekdays, 30% weekends | News reports 2023–25 |
+| Hours | 06:00–23:00 | Extended to 11 PM in Jan 2025 (festival hours differ) |
+| Frequency | ~7 min peak, ~10 min off-peak | Third-party guides |
+| Line lengths | 16.59 km / 14.66 km | Wikipedia |
+| Station coordinates | hand-entered, ±200 m | Approximate |
+| Auto / cab tariffs, CO₂ | see `CONFIG` | Estimates |
+
+> ⚠️ None of this is official Maha-Metro data. Check it against the official fare chart and timetable at [punemetrorail.org](https://www.punemetrorail.org) before the demo. Everything lives in `js/data.js`, so each fix is a one-line edit.
+
+## Run it
+
+No build step, nothing to install.
+
+- **Online:** [blop77.github.io/metro-mitra](https://blop77.github.io/metro-mitra/), hosted on GitHub Pages and redeployed whenever `main` changes.
+- **Locally:** open `index.html` in a browser, or:
 
 ```bash
-node tests/enigma.test.js
+npx serve .            # GPS and offline mode need http(s), not file://
+node tests/planner.test.js
 ```
 
-The tests check the engine against reference values: `AAAAA → BDZGO`, the `ADU → ADV → AEW → BFX` double step, the two-notch rotors VI–VIII, and the full decryption of the 1941 Barbarossa message.
+## Done before the event
 
-## How Enigma works (short version)
+- Core engine: routing, fares, first/last mile, comparison (23 tests)
+- Door-to-door UI with timeline, map, GPS and share links
+- Data cross-checked against news and guide sources; concession fares
+- Savings tracker and offline/installable PWA
 
-Pressing a key sends current through the **plugboard** (which swaps letter pairs), then right to left through three **rotors** (each one scrambles the alphabet). The **reflector** then sends it back through the rotors by a different path, and through the plugboard again to light a **lamp**. Before each key press the right rotor steps, and now and then it carries the middle and left rotors along, so the scramble changes with every letter.
+## Hackathon plan: what to build next (Codex sprint)
 
-Because of the reflector, a letter can never be encrypted as itself. That was a weakness that helped Alan Turing and the codebreakers at Bletchley Park break Enigma.
+The core (data → engine → UI) works end to end and has tests. Each item below is self-contained, so it makes a good prompt for Codex, or for us if the credits fall through:
+
+| # | Feature | Why judges care | Size |
+|---|---|---|---|
+| 1 | **Verify data** against the official fare chart and real station coordinates (cross-checked with news sources so far) | Accuracy | S |
+| 2 | **Marathi / Hindi UI** (station names + labels; `data.js` already has a single place for names) | Inclusion | S |
+| 3 | **Crowd reports:** "how crowded is the train / is the lift working?" tap-to-report, shown on the map | Civic, community | M |
+| 4 | **PMPML feeder buses** as a first/last-mile option (Pune open-data GTFS) | Real last-mile fix | M |
+| 5 | **Line 3 (Hinjewadi–Shivajinagar):** first phase reported cleared by CMRS but not confirmed open. Add its stations to `LINES` when it opens; the engine needs no changes | Future-proof | S |
+| 6 | **Savings badges and sharing:** turn the savings tracker into a shareable card ("I saved ₹2,400 this month") | Engagement | S |
+| 7 | **Accessibility mode:** lift/escalator-only routes, larger text | Inclusion | M |
+
+**Demo script (2 min):** MIT-WPU → Airport at 9 AM (metro wins, saves well over ₹100) → switch the ticket to *Student* → tap *I took this trip* to show the savings tracker → Hinjewadi → Koregaon Park in cycle mode (honest trade-off) → Fergusson College → Shaniwar Wada, where the app says *take an auto* → turn on airplane mode and plan again (works offline). That honesty is the pitch.
 
 ## License
 
