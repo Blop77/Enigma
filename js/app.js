@@ -687,6 +687,55 @@
     plan();
   }
 
+  function openTrip(fromName, toName) {
+    fromIn.value = fromName;
+    toIn.value = toName;
+    showView('plan');
+    plan();
+  }
+
+  function initAsk() {
+    const dialog = $('#ask-dialog'), messages = $('#ask-messages'), input = $('#ask-input');
+    const turns = [{ answer: { textKey: 'assistant.welcome', vars: {} } }];
+    function render() {
+      messages.innerHTML = turns.map((turn, index) => {
+        const user = turn.question === undefined ? '' : `<div class="ask-bubble ask-user">${esc(turn.question)}</div>`;
+        const response = turn.answer ? `<div class="ask-bubble ask-bot">${esc(t(turn.answer.textKey, turn.answer.vars || {}))}${turn.answer.action ? `<button type="button" class="link-btn ask-action" data-ask-action="${index}" data-i18n="${turn.answer.action.type === 'trip' ? 'assistant.openTrip' : 'assistant.openGap'}">${esc(t(turn.answer.action.type === 'trip' ? 'assistant.openTrip' : 'assistant.openGap'))}</button>` : ''}</div>` : '';
+        return user + response;
+      }).join('');
+      messages.scrollTop = messages.scrollHeight;
+    }
+    function reportsNow() {
+      try {
+        reports = Reports.dropExpired(JSON.parse(localStorage.getItem('metromitra-reports') || '[]'), Date.now(), CONFIG.reportExpiryMs);
+      } catch (_) { reports = []; }
+      return reports;
+    }
+    function submitQuestion(question) {
+      question = String(question || '').trim();
+      if (!question) return;
+      const answer = window.MetroAssistant.answer(question, I.lang, new Date(), reportsNow());
+      turns.push({ question, answer });
+      render();
+    }
+    $('#ask-launcher').addEventListener('click', () => { dialog.showModal(); input.focus(); });
+    $('#ask-close').addEventListener('click', () => { dialog.close(); $('#ask-launcher').focus(); });
+    dialog.addEventListener('click', (e) => { if (e.target === dialog) dialog.close(); });
+    $('#ask-form').addEventListener('submit', (e) => { e.preventDefault(); submitQuestion(input.value); input.value = ''; input.focus(); });
+    dialog.addEventListener('click', (e) => {
+      const chip = e.target.closest('[data-ask-example]');
+      if (chip) return submitQuestion(t(chip.dataset.askExample));
+      const action = e.target.closest('[data-ask-action]');
+      if (!action) return;
+      const turn = turns[Number(action.dataset.askAction)];
+      if (turn && turn.answer.action.type === 'trip') openTrip(turn.answer.action.from, turn.answer.action.to);
+      else if (turn) showView('gap');
+      dialog.close();
+    });
+    document.addEventListener('mm:lang', render);
+    render();
+  }
+
   /* ------------------------------------------------------------------
    * Wiring
    * ------------------------------------------------------------------ */
@@ -770,7 +819,7 @@
   }
 
   window.MetroMitra = {
-    fmtMin, fmtRs, fmtKm, fmtCo2, esc, showView, planFrom,
+    fmtMin, fmtRs, fmtKm, fmtCo2, esc, showView, planFrom, openTrip,
     initialHash: INITIAL_HASH,
     get view() { return view; }
   };
@@ -778,6 +827,7 @@
   document.addEventListener('mm:lang', renderSavings);
 
   init();
+  initAsk();
 
   // Offline support: cache the app so it works underground with no signal.
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
