@@ -4,9 +4,13 @@
 
 Built for the Pune Metro hackathon · theme **Urban mobility**.
 
-### ▶ [Live demo: blop77.github.io/metro-mitra](https://blop77.github.io/metro-mitra/) · 🚇 [Ride the story](https://blop77.github.io/metro-mitra/story.html)
+### ▶ [Live demo: blop77.github.io/metro-mitra](https://blop77.github.io/metro-mitra/) · 🚇 [Ride the story](https://blop77.github.io/metro-mitra/story.html) · 🎬 [Watch the video](https://youtu.be/BBzg8h42e30)
 
-![Urban mobility](https://img.shields.io/badge/theme-urban%20mobility-8e3fa8) ![No build step](https://img.shields.io/badge/build-none-555) ![Tests](https://img.shields.io/badge/tests-84%20passing-2f9e5f) ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
+![Urban mobility](https://img.shields.io/badge/theme-urban%20mobility-8e3fa8) ![No build step](https://img.shields.io/badge/build-none-555) ![Tests](https://img.shields.io/badge/tests-89%20passing-2f9e5f) ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
+
+**🎬 The 2-minute walkthrough, with voiceover and subtitles:**
+
+[![MetroMitra walkthrough video: Gap Map, feeder simulator and trip planner](docs/walkthrough.jpg)](https://youtu.be/BBzg8h42e30)
 
 [![The Gap Map with five suggested feeders switched on](screenshot.png)](https://blop77.github.io/metro-mitra/)
 
