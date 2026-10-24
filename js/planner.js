@@ -44,6 +44,10 @@
     });
   }
 
+  function avoided(id, opts) {
+    return !!(opts && opts.avoid && opts.avoid.indexOf(id) !== -1);
+  }
+
   /* ------------------------------------------------------------------
    * Service: peak hours, headways, operating window
    * ------------------------------------------------------------------ */
@@ -177,9 +181,12 @@
 
     Object.keys(STATIONS).forEach(function (id) {
       var ls = linesAt(id, opts);
+      if (avoided(id, opts)) return; // riders may pass through, but cannot change here
+      var transfer = CONFIG.transferMin + headway / 2 +
+        (opts && opts.accessible ? CONFIG.access.extraTransferMin : 0);
       ls.forEach(function (a) {
         ls.forEach(function (b) {
-          if (a !== b) edge(a + '|' + id, b + '|' + id, CONFIG.transferMin + headway / 2);
+          if (a !== b) edge(a + '|' + id, b + '|' + id, transfer);
         });
       });
     });
@@ -189,7 +196,7 @@
   // Shortest-time metro route. Returns null if from === to.
   function route(fromId, toId, opts) {
     station(fromId); station(toId);
-    if (fromId === toId) return null;
+    if (fromId === toId || avoided(fromId, opts) || avoided(toId, opts)) return null;
     var headway = (opts && opts.headwayMin) || CONFIG.offPeakHeadwayMin;
     var g = buildGraph(headway, opts);
 
@@ -262,16 +269,24 @@
   function nearestStations(place, k, opts) {
     if (k && typeof k === 'object') { opts = k; k = 3; }
     return Object.keys(STATIONS)
-      .filter(function (id) { return linesAt(id, opts).length > 0; })
+      .filter(function (id) { return linesAt(id, opts).length > 0 && !avoided(id, opts); })
       .map(function (id) { return { id: id, km: roadKm(place, station(id)) }; })
       .sort(function (a, b) { return a.km - b.km; })
       .slice(0, k || 3);
   }
 
   // mode: 'auto' (walk short hops, auto otherwise), 'cycle' or 'walk'.
-  function mileLeg(km, mode, peak) {
+  function mileLeg(km, mode, peak, opts) {
     if (km < 0.05) return { mode: 'none', km: 0, min: 0, cost: 0, co2: 0 };
-    var walk = { mode: 'walk', km: km, min: km / CONFIG.walkKmh * 60, cost: 0, co2: 0 };
+    var accessible = !!(opts && opts.accessible);
+    if (accessible && km > CONFIG.access.maxWalkKm) {
+      var accessibleSpeed = peak ? CONFIG.roadKmhPeak : CONFIG.roadKmhOffPeak;
+      return { mode: 'auto', km: km, min: CONFIG.auto.waitMin + km / accessibleSpeed * 60,
+        cost: autoFare(km), co2: km * CONFIG.co2.auto };
+    }
+    var walkKmh = accessible ? CONFIG.access.walkKmh : CONFIG.walkKmh;
+    var walk = { mode: 'walk', km: km, min: km / walkKmh * 60, cost: 0, co2: 0 };
+    if (accessible) return walk;
     if (mode === 'walk' || km <= CONFIG.maxWalkKm) return walk;
     if (mode === 'cycle' && km <= CONFIG.maxCycleKm) return { mode: 'cycle', km: km, min: km / CONFIG.cycleKmh * 60, cost: 0, co2: 0 };
     var speed = peak ? CONFIG.roadKmhPeak : CONFIG.roadKmhOffPeak;
@@ -293,7 +308,7 @@
   /* ------------------------------------------------------------------
    * Door-to-door planning.
    * A place is { name, lat, lng } or { stationId }.
-   * opts: { date: Date, mile: 'auto' | 'cycle' | 'walk', pass: 'regular' | 'card' | 'student', planned: boolean }
+   * opts: { date, mile, pass, planned, accessible, avoid }
    * ------------------------------------------------------------------ */
   function toPlace(p) {
     if (p.stationId) { var s = station(p.stationId); s.stationId = s.id; return s; }
@@ -301,7 +316,9 @@
   }
 
   function candidates(place, opts) {
-    if (place.stationId) return linesAt(place.stationId, opts).length ? [{ id: place.stationId, km: 0 }] : [];
+    if (place.stationId && !avoided(place.stationId, opts)) {
+      return linesAt(place.stationId, opts).length ? [{ id: place.stationId, km: 0 }] : [];
+    }
     return nearestStations(place, 3, opts);
   }
 
@@ -315,11 +332,14 @@
     var options = [];
     candidates(origin, opts).forEach(function (o) {
       candidates(dest, opts).forEach(function (d) {
-        var r = route(o.id, d.id, { headwayMin: headway, planned: opts.planned });
+        var r = route(o.id, d.id, { headwayMin: headway, planned: opts.planned,
+          accessible: opts.accessible, avoid: opts.avoid });
         if (!r) return;
-        var first = mileLeg(o.km, mile, peak), last = mileLeg(d.km, mile, peak);
-        var waitMin = CONFIG.stationEntryMin + headway / 2 + (service.startsInMin || 0);
-        var transferMin = r.transfers * (CONFIG.transferMin + headway / 2);
+        var first = mileLeg(o.km, mile, peak, opts), last = mileLeg(d.km, mile, peak, opts);
+        var waitMin = CONFIG.stationEntryMin + (opts.accessible ? CONFIG.access.extraEntryMin : 0) +
+          headway / 2 + (service.startsInMin || 0);
+        var transferMin = r.transfers * (CONFIG.transferMin + headway / 2 +
+          (opts.accessible ? CONFIG.access.extraTransferMin : 0));
         var metroMin = waitMin + r.rideMin + transferMin;
         var ticket = concession(r.fare, pass, date);
         options.push({
@@ -342,7 +362,7 @@
     var direct = { auto: directRoad('auto', km, peak, date), cab: directRoad('cab', km, peak, date) };
     var best = options[0] || null;
 
-    return {
+    var result = {
       origin: origin,
       dest: dest,
       service: service,
@@ -351,6 +371,13 @@
       direct: direct,
       verdict: best ? verdict(best, direct.auto, direct.cab, service) : null
     };
+    if (opts.accessible) {
+      result.accessible = true;
+      // Only blame step-free access when stations were actually avoided; otherwise
+      // there is simply no useful metro trip (e.g. both ends share a station).
+      result.noStepFree = !best && !!(opts.avoid && opts.avoid.length);
+    }
+    return result;
   }
 
   function verdict(metro, auto, cab, service) {

@@ -187,6 +187,20 @@
     });
   }
 
+  // Accessible mode expands station targets to the shared CSS touch size.
+  function nearestStationTarget(e) {
+    const rect = svg.getBoundingClientRect(), scale = rect.width / W;
+    if (!scale) return null;
+    const x = (e.clientX - rect.left) / scale, y = (e.clientY - rect.top) / scale;
+    let best = null, bestDistance = Infinity;
+    state.stationIds.forEach((id) => {
+      const p = sxy(id), distance = Math.hypot(p[0] - x, p[1] - y) * scale;
+      if (distance < bestDistance) { best = id; bestDistance = distance; }
+    });
+    const radius = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--access-tap-size')) / 2;
+    return bestDistance <= radius ? best : null;
+  }
+
   /* ------------------------------------------------------------------
    * City report: every hub ranked, with the single best feeder for it.
    * One hub per tick so the page stays responsive.
@@ -332,10 +346,18 @@
       renderRecs();
     });
     svg.addEventListener('click', (e) => {
+      if (document.documentElement.classList.contains('accessible') &&
+          !(e.target.classList && e.target.classList.contains('stn'))) {
+        const id = nearestStationTarget(e);
+        if (id) { toggleFeeder(id, !G.feederList(state).includes(id)); return; }
+      }
       const i = e.target.dataset && e.target.dataset.i;
       if (i !== undefined) {
         showCell(+i);
-        if (window.matchMedia('(max-width: 899px)').matches) $('#cell-info').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        if (window.matchMedia('(max-width: 899px)').matches) {
+          const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          $('#cell-info').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'nearest' });
+        }
       }
     });
     rebuild();
@@ -350,5 +372,6 @@
     renderReport();
     if (selected !== null && !$('#cell-info').hidden) showCell(selected);
   });
+  document.addEventListener('mm:access', () => { if (started) render(); });
   if (M.view === 'gap') start();
 })();
