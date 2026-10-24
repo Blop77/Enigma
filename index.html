@@ -6,6 +6,9 @@
   <title>MetroMitra · Pune Metro door-to-door planner</title>
   <meta name="description" content="Plan any trip across Pune door to door: nearest metro station, the right line and interchange, fare, first and last mile, and an honest comparison with an auto or cab.">
   <meta name="theme-color" content="#5b2a86">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -42,6 +45,10 @@
             <label for="when">Leaving at</label>
             <input id="when" type="time">
           </div>
+          <div class="field small">
+            <label for="pass">Ticket</label>
+            <select id="pass"></select>
+          </div>
           <fieldset class="field small mile">
             <legend>First &amp; last mile</legend>
             <div class="seg" role="radiogroup">
@@ -73,6 +80,14 @@
       </div>
       <svg id="map" role="img" aria-label="Map of Pune Metro Purple and Aqua lines"></svg>
       <p class="hint">Tap a station to plan from it, then tap another to plan to it.</p>
+    </section>
+
+    <section id="savings" class="panel savings" aria-label="My metro savings">
+      <div class="map-head">
+        <h2>My metro savings</h2>
+        <button type="button" id="clear-trips" class="link-btn" hidden>Clear</button>
+      </div>
+      <div id="savings-body"></div>
     </section>
   </main>
 

@@ -66,10 +66,32 @@ test('Unknown station throws', () => {
 
 test('Fare slabs: minimum, boundaries and maximum', () => {
   assert.strictEqual(P.metroFare(0.5), 10);
-  assert.strictEqual(P.metroFare(2), 10);
-  assert.strictEqual(P.metroFare(2.01), 15);
+  assert.strictEqual(P.metroFare(1), 10);
+  assert.strictEqual(P.metroFare(1.01), 15);
   assert.strictEqual(P.metroFare(50), 35);
-  assert.strictEqual(P.route('pcmc', 'ramwadi').fare, 35);
+});
+
+test('Fares match published examples', () => {
+  assert.strictEqual(P.route('swargate', 'vanaz').fare, 30);
+  assert.strictEqual(P.route('swargate', 'ramwadi').fare, 30);
+  assert.strictEqual(P.route('ramwadi', 'pcmc').fare, 35);
+});
+
+test('Concessions: student every day, card more on weekends', () => {
+  const fri = at(12), sat = new Date(2026, 9, 24, 12);
+  assert.strictEqual(P.isWeekend(fri), false);
+  assert.strictEqual(P.isWeekend(sat), true);
+  assert.deepStrictEqual(P.ticketFare(10, 'regular', sat), { base: 30, pct: 0, fare: 30 });
+  assert.strictEqual(P.ticketFare(10, 'student', fri).fare, 21);
+  assert.strictEqual(P.ticketFare(10, 'card', fri).fare, 27);
+  assert.strictEqual(P.ticketFare(10, 'card', sat).fare, 21);
+  assert.strictEqual(P.ticketFare(20, 'card', fri).fare, 32);   // ₹31.50 rounds to ₹32
+});
+
+test('Trip cost uses the discounted fare', () => {
+  const t = P.planTrip({ stationId: 'vanaz' }, { stationId: 'ramwadi' }, { date: at(12), pass: 'student' });
+  assert.strictEqual(t.best.ticket.base, 30);
+  assert.strictEqual(t.best.cost, 21);
 });
 
 test('Auto fare: minimum fare covers the first 1.5 km', () => {
@@ -82,7 +104,8 @@ test('Peak hours and service window', () => {
   assert.strictEqual(P.isPeak(at(14)), false);
   assert.strictEqual(P.serviceStatus(at(5, 30)).open, false);
   assert.strictEqual(P.serviceStatus(at(5, 30)).startsInMin, 30);
-  assert.strictEqual(P.serviceStatus(at(23)).closed, true);
+  assert.strictEqual(P.serviceStatus(at(22, 30)).open, true, 'runs till 23:00');
+  assert.strictEqual(P.serviceStatus(at(23, 15)).closed, true);
   assert.strictEqual(P.serviceStatus(at(12)).headwayMin, CONFIG.offPeakHeadwayMin);
 });
 
@@ -121,6 +144,12 @@ test('Long cross-city trip: metro beats an auto on cost', () => {
 test('Plans are sorted fastest first', () => {
   const t = P.planTrip({ name: 'A', lat: 18.5182, lng: 73.8153 }, { name: 'B', lat: 18.6000, lng: 73.8300 }, { date: at(12) });
   t.alternatives.forEach(a => assert.ok(a.min >= t.best.min));
+});
+
+test('Trip long before the first train is flagged not-yet-open', () => {
+  const t = P.planTrip({ stationId: 'pcmc' }, { stationId: 'swargate' }, { date: at(4) });
+  assert.strictEqual(t.verdict.kind, 'notyet');
+  assert.strictEqual(P.planTrip({ stationId: 'pcmc' }, { stationId: 'swargate' }, { date: at(5, 50) }).verdict.kind, 'metro');
 });
 
 test('Trip after last train is flagged closed', () => {

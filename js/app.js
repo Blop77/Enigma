@@ -18,6 +18,7 @@
 
   let myLocation = null;     // { lat, lng } once the user shares GPS
   let pickNext = 'from';     // which field a tap on the map fills
+  let trips = [];            // logged trips: { t, from, to, cost, autoCost, co2SavedG }
 
   /* ------------------------------------------------------------------
    * Places: stations + landmarks, resolved from free text
@@ -98,11 +99,15 @@
   /* ------------------------------------------------------------------
    * Results
    * ------------------------------------------------------------------ */
-  function verdictText(v, best, direct) {
+  function verdictText(v, trip) {
+    const direct = trip.direct;
     const rs = fmtRs(Math.abs(v.saveRs)), mins = fmtMin(Math.abs(v.saveMin));
     switch (v.kind) {
       case 'closed':
         return 'The metro has stopped for the night (last train ' + CONFIG.lastTrain + '). Road options are below.';
+      case 'notyet':
+        return '🌙 The metro opens at ' + CONFIG.firstTrain + ' (in ' + fmtMin(trip.service.startsInMin) +
+               '). Change the time to plan for after it opens, or take an auto now.';
       case 'metro':
         return v.saveMin >= 1
           ? '✅ Metro wins: ' + rs + ' cheaper and ' + mins + ' faster than an auto.'
@@ -134,9 +139,11 @@
       t += b.firstMile.min;
     }
 
+    const tk = b.ticket;
+    const fare = 'Ticket ' + fmtRs(tk.fare) + (tk.pct ? ' (' + tk.pct + '% off ' + fmtRs(tk.base) + ')' : '');
     const wait = trip.service.startsInMin
-      ? 'First train at ' + CONFIG.firstTrain
-      : 'Ticket + security ~' + CONFIG.stationEntryMin + ' min · trains every ~' + hw + ' min';
+      ? fare + ' · first train at ' + CONFIG.firstTrain
+      : fare + ' · security ~' + CONFIG.stationEntryMin + ' min · trains every ~' + hw + ' min';
     html += step('🎫', 'Enter ' + esc(stName(r.from)), wait, clock(date, t));
     t += b.waitMin;
 
@@ -188,10 +195,11 @@
       const b = trip.best;
       html += '<div class="summary">' +
         '<div class="stat"><b>' + fmtMin(b.min) + '</b><small>door to door</small></div>' +
-        '<div class="stat"><b>' + fmtRs(b.cost) + '</b><small>metro ' + fmtRs(b.route.fare) + '</small></div>' +
-        '<div class="stat"><b>' + fmtCo2(Math.max(0, trip.verdict.co2SavedG)) + '</b><small>CO₂ saved vs cab</small></div>' +
+        '<div class="stat"><b>' + fmtRs(b.cost) + '</b><small>metro ' + fmtRs(b.ticket.fare) +
+          (b.ticket.pct ? ' · ' + b.ticket.pct + '% off' : '') + '</small></div>' +
+        '<div class="stat"><b>' + fmtCo2(Math.max(0, trip.verdict.co2SavedG)) + '</b><small>CO₂ saved vs auto</small></div>' +
         '</div>';
-      html += '<p class="verdict ' + trip.verdict.kind + '">' + verdictText(trip.verdict, b, trip.direct) + '</p>';
+      html += '<p class="verdict ' + trip.verdict.kind + '">' + verdictText(trip.verdict, trip) + '</p>';
       html += timeline(trip, date);
     } else {
       html += '<p class="verdict road">Both places are closest to the same metro station, so the metro will not help. ' +
@@ -203,11 +211,15 @@
         '<p class="alt">From ' + esc(stName(a.route.from)) + ' to ' + esc(stName(a.route.to)) + ' · ' +
         fmtMin(a.min) + ' · ' + fmtRs(a.cost) + '</p>').join('');
     }
-    html += '<button type="button" class="share" id="share">🔗 Copy link to this trip</button>';
+    html += '<div class="actions">' +
+      (trip.best && trip.verdict.kind !== 'closed' ? '<button type="button" class="took" id="took">✔ I took this trip</button>' : '') +
+      '<button type="button" class="share" id="share">🔗 Copy link to this trip</button></div>';
 
     resultsEl.innerHTML = html;
     resultsEl.hidden = false;
     $('#share').addEventListener('click', share);
+    const took = $('#took');
+    if (took) took.addEventListener('click', () => { logTrip(trip); took.disabled = true; took.textContent = '✔ Added to my savings'; });
   }
 
   /* ------------------------------------------------------------------
@@ -316,6 +328,56 @@
   }
 
   /* ------------------------------------------------------------------
+   * My savings: trips the user says they took, compared with an auto
+   * ------------------------------------------------------------------ */
+  function logTrip(trip) {
+    trips.push({
+      t: Date.now(),
+      from: placeName(trip.origin),
+      to: placeName(trip.dest),
+      cost: Math.round(trip.best.cost),
+      autoCost: Math.round(trip.direct.auto.cost),
+      co2SavedG: Math.round(trip.verdict.co2SavedG)
+    });
+    save();
+    renderSavings();
+  }
+
+  function totals(list) {
+    return list.reduce((s, x) => ({ n: s.n + 1, rs: s.rs + x.autoCost - x.cost, co2: s.co2 + x.co2SavedG }),
+                       { n: 0, rs: 0, co2: 0 });
+  }
+
+  function renderSavings() {
+    const body = $('#savings-body');
+    $('#clear-trips').hidden = !trips.length;
+    if (!trips.length) {
+      body.innerHTML = '<p class="empty">Plan a trip and tap <b>✔ I took this trip</b>. ' +
+        'MetroMitra adds up the money and CO₂ you save compared with taking an auto.</p>';
+      return;
+    }
+    const now = new Date();
+    const month = trips.filter((x) => {
+      const d = new Date(x.t);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+    const m = totals(month), all = totals(trips);
+    const monthName = now.toLocaleString('en-IN', { month: 'long' });
+    body.innerHTML = '<div class="summary">' +
+      '<div class="stat"><b>' + m.n + '</b><small>trips in ' + esc(monthName) + '</small></div>' +
+      '<div class="stat"><b>' + fmtRs(Math.max(0, m.rs)) + '</b><small>saved vs auto</small></div>' +
+      '<div class="stat"><b>' + fmtCo2(Math.max(0, m.co2)) + '</b><small>CO₂ avoided</small></div>' +
+      '</div>' +
+      (all.n > m.n ? '<p class="alt">All time: ' + all.n + ' trips · ' + fmtRs(Math.max(0, all.rs)) + ' · ' + fmtCo2(Math.max(0, all.co2)) + '</p>' : '') +
+      '<ul class="trip-log">' + trips.slice(-5).reverse().map((x) => {
+        const d = new Date(x.t), save = x.autoCost - x.cost;
+        return '<li><span>' + d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ' · ' +
+          esc(x.from) + ' → ' + esc(x.to) + '</span><span class="' + (save > 0 ? 'gain' : 'loss') + '">' +
+          (save > 0 ? '+' + fmtRs(save) : fmtRs(x.cost)) + '</span></li>';
+      }).join('') + '</ul>';
+  }
+
+  /* ------------------------------------------------------------------
    * Planning, sharing, persistence
    * ------------------------------------------------------------------ */
   function showError(msg) {
@@ -324,6 +386,17 @@
   }
 
   function mile() { return form.elements.mile.value; }
+  function pass() { return $('#pass').value; }
+
+  function fillPasses() {
+    const sel = $('#pass');
+    Object.keys(CONFIG.concessions).forEach((k) => {
+      const o = document.createElement('option');
+      o.value = k;
+      o.textContent = CONFIG.concessions[k].label;
+      sel.appendChild(o);
+    });
+  }
 
   function plan() {
     showError('');
@@ -333,7 +406,7 @@
     if (from.stationId && from.stationId === to.stationId) return showError('From and To are the same station.');
 
     const date = departure();
-    const trip = P.planTrip(from, to, { date, mile: mile() });
+    const trip = P.planTrip(from, to, { date, mile: mile(), pass: pass() });
     renderService(date);
     renderResults(trip, date);
     drawMap(trip);
@@ -360,11 +433,16 @@
   }
 
   function save() {
-    try { localStorage.setItem(STORE_KEY, JSON.stringify({ mile: mile() })); } catch (e) { /* private mode */ }
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ mile: mile(), pass: pass(), trips })); } catch (e) { /* private mode */ }
   }
 
   function load() {
-    try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (s && s.mile) setMile(s.mile); } catch (e) { /* ignore */ }
+    try {
+      const s = JSON.parse(localStorage.getItem(STORE_KEY)) || {};
+      if (s.mile) setMile(s.mile);
+      if (s.pass && CONFIG.concessions[s.pass]) $('#pass').value = s.pass;
+      if (Array.isArray(s.trips)) trips = s.trips;
+    } catch (e) { /* storage blocked or corrupt: start fresh */ }
   }
 
   function locate() {
@@ -392,8 +470,10 @@
    * ------------------------------------------------------------------ */
   function init() {
     fillDatalist();
+    fillPasses();
     drawLegend();
     load();
+    renderSavings();
     const now = new Date();
     whenIn.value = clock(now, 0);
     renderService(now);
@@ -409,6 +489,13 @@
       save();
       if (!resultsEl.hidden) plan();
     }));
+    $('#pass').addEventListener('change', () => { save(); if (!resultsEl.hidden) plan(); });
+    $('#clear-trips').addEventListener('click', () => {
+      if (!confirm('Clear all your logged trips?')) return;
+      trips = [];
+      save();
+      renderSavings();
+    });
     whenIn.addEventListener('change', () => { if (!resultsEl.hidden) plan(); else renderService(departure()); });
     document.querySelectorAll('.quick button').forEach((b) => b.addEventListener('click', () => {
       fromIn.value = b.dataset.from;
@@ -426,4 +513,9 @@
   }
 
   init();
+
+  // Offline support: cache the app so it works underground with no signal.
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    navigator.serviceWorker.register('sw.js').catch(() => { /* app still works online */ });
+  }
 })();

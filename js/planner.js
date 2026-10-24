@@ -72,6 +72,15 @@
     return CONFIG.fareSlabs[CONFIG.fareSlabs.length - 1][1];
   }
 
+  function isWeekend(date) { var d = date.getDay(); return d === 0 || d === 6; }
+
+  // Fare after concession. pass: 'regular' | 'card' | 'student'.
+  function ticketFare(km, pass, date) {
+    var base = metroFare(km), c = CONFIG.concessions[pass] || CONFIG.concessions.regular;
+    var pct = isWeekend(date) ? c.weekend : c.weekday;
+    return { base: base, pct: pct, fare: Math.round(base * (100 - pct) / 100) };
+  }
+
   function autoFare(km) {
     var a = CONFIG.auto;
     return Math.round(a.baseFare + Math.max(0, km - a.baseKm) * a.perKm);
@@ -233,7 +242,7 @@
   /* ------------------------------------------------------------------
    * Door-to-door planning.
    * A place is { name, lat, lng } or { stationId }.
-   * opts: { date: Date, mile: 'auto' | 'cycle' | 'walk' }
+   * opts: { date: Date, mile: 'auto' | 'cycle' | 'walk', pass: 'regular' | 'card' | 'student' }
    * ------------------------------------------------------------------ */
   function toPlace(p) {
     if (p.stationId) { var s = station(p.stationId); s.stationId = s.id; return s; }
@@ -246,7 +255,7 @@
 
   function planTrip(originIn, destIn, opts) {
     opts = opts || {};
-    var date = opts.date || new Date(), mile = opts.mile || 'auto';
+    var date = opts.date || new Date(), mile = opts.mile || 'auto', pass = opts.pass || 'regular';
     var origin = toPlace(originIn), dest = toPlace(destIn);
     var service = serviceStatus(date), peak = !!service.peak;
     var headway = service.headwayMin;
@@ -260,15 +269,17 @@
         var waitMin = CONFIG.stationEntryMin + headway / 2 + (service.startsInMin || 0);
         var transferMin = r.transfers * (CONFIG.transferMin + headway / 2);
         var metroMin = waitMin + r.rideMin + transferMin;
+        var ticket = ticketFare(r.km, pass, date);
         options.push({
           route: r,
+          ticket: ticket,
           firstMile: first,
           lastMile: last,
           waitMin: waitMin,
           transferMin: transferMin,
           metroMin: metroMin,
           min: first.min + metroMin + last.min,
-          cost: first.cost + r.fare + last.cost,
+          cost: first.cost + ticket.fare + last.cost,
           co2: first.co2 + r.km * CONFIG.co2.metro + last.co2
         });
       });
@@ -293,9 +304,10 @@
   function verdict(metro, auto, cab, service) {
     var saveRs = auto.cost - metro.cost;
     var saveMin = auto.min - metro.min;
-    var co2Saved = cab.co2 - metro.co2;
+    var co2Saved = auto.co2 - metro.co2;
     var kind;
     if (service.closed) kind = 'closed';
+    else if (service.startsInMin > 15) kind = 'notyet';
     else if (saveMin >= -5 && saveRs > 0) kind = 'metro';
     else if (saveRs > 0) kind = 'tradeoff';
     else kind = 'road';
@@ -314,6 +326,8 @@
     headwayMin: headwayMin,
     serviceStatus: serviceStatus,
     metroFare: metroFare,
+    isWeekend: isWeekend,
+    ticketFare: ticketFare,
     autoFare: autoFare,
     cabFare: cabFare,
     route: route,

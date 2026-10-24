@@ -49,7 +49,7 @@ body {
   color: var(--ink);
   font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
 }
-button, input { font: inherit; color: inherit; }
+button, input, select { font: inherit; color: inherit; }
 h1, h2, h3 { margin: 0; line-height: 1.2; }
 
 /* ---------- header ---------- */
@@ -82,7 +82,8 @@ h1, h2, h3 { margin: 0; line-height: 1.2; }
   .layout { grid-template-columns: minmax(0, 420px) minmax(0, 1fr); align-items: start; }
   .planner { grid-column: 1; grid-row: 1; }
   .results { grid-column: 1; grid-row: 2; }
-  .map-panel { grid-column: 2; grid-row: 1 / span 2; position: sticky; top: 16px; }
+  .savings { grid-column: 1; grid-row: 3; }
+  .map-panel { grid-column: 2; grid-row: 1 / span 3; position: sticky; top: 16px; }
 }
 .panel {
   background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
@@ -94,7 +95,7 @@ h1, h2, h3 { margin: 0; line-height: 1.2; }
 .field { display: grid; gap: 4px; border: 0; padding: 0; margin: 0; min-width: 0; }
 .field label, .field legend { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; padding: 0; }
 .input-row { display: flex; gap: 8px; }
-input[list], input[type=time] {
+input[list], input[type=time], select {
   width: 100%; min-width: 0; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line);
   background: var(--bg);
 }
@@ -107,7 +108,8 @@ input:focus-visible, button:focus-visible { outline: 2px solid var(--brand); out
   position: absolute; right: 6px; top: 64px; z-index: 1; width: 32px; height: 32px; border-radius: 50%;
   border: 1px solid var(--line); background: var(--panel); cursor: pointer; font-size: 16px; line-height: 1;
 }
-.options { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 10px; }
+.options { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.options .mile { grid-column: 1 / -1; }
 .seg { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
 .seg label { flex: 1; text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--ink); font-size: 13px; }
 .seg input { position: absolute; opacity: 0; pointer-events: none; }
@@ -134,7 +136,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid var(--brand); out
 
 .verdict { border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; font-size: 14px; }
 .verdict.metro { background: var(--good-bg); color: var(--good); }
-.verdict.tradeoff { background: var(--warn-bg); color: var(--warn); }
+.verdict.tradeoff, .verdict.notyet { background: var(--warn-bg); color: var(--warn); }
 .verdict.road, .verdict.closed { background: var(--bad-bg); color: var(--bad); }
 
 .steps { list-style: none; margin: 0 0 14px; padding: 0; }
@@ -162,7 +164,10 @@ input:focus-visible, button:focus-visible { outline: 2px solid var(--brand); out
 .compare tr.best td { font-weight: 700; }
 .results h3 { font-size: 14px; margin: 16px 0 6px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
 .alt { font-size: 13px; color: var(--muted); margin: 4px 0; }
-.share { margin-top: 12px; border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.took { border: 0; background: var(--good); color: var(--panel); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 13px; font-weight: 600; }
+.took:disabled { opacity: .6; cursor: default; }
+.share { border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
 
 /* ---------- map ---------- */
 .map-head { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; margin-bottom: 8px; }
@@ -182,5 +187,16 @@ input:focus-visible, button:focus-visible { outline: 2px solid var(--brand); out
 #map .pin { stroke: var(--panel); stroke-width: 2; }
 #map .mile { fill: none; stroke: var(--ink); stroke-width: 2; stroke-dasharray: 4 4; opacity: .7; }
 .hint { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+
+/* ---------- savings ---------- */
+.link-btn { border: 0; background: none; color: var(--muted); text-decoration: underline; cursor: pointer; font-size: 12px; padding: 4px; }
+.savings .summary { margin-bottom: 8px; }
+.savings .empty { margin: 0; color: var(--muted); font-size: 13px; }
+.trip-log { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+.trip-log li { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.trip-log li:last-child { border-bottom: 0; }
+.trip-log span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.trip-log .gain { color: var(--good); white-space: nowrap; }
+.trip-log .loss { color: var(--muted); white-space: nowrap; }
 
 .foot { max-width: 1200px; margin: 0 auto; padding: 0 16px 24px; font-size: 12px; color: var(--muted); }

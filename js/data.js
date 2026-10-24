@@ -52,7 +52,7 @@
       name: 'Purple Line',
       short: 'Line 1',
       color: '#8e3fa8',
-      lengthKm: 17.4,      // published route length; station gaps are scaled to match
+      lengthKm: 16.59,     // published route length; station gaps are scaled to match
       stations: ['pcmc', 'sant-tukaram-nagar', 'bhosari', 'kasarwadi', 'phugewadi', 'dapodi',
                  'bopodi', 'khadki', 'range-hills', 'shivaji-nagar', 'civil-court',
                  'budhwar-peth', 'mandai', 'swargate']
@@ -61,7 +61,7 @@
       name: 'Aqua Line',
       short: 'Line 2',
       color: '#0fa3b1',
-      lengthKm: 15.7,
+      lengthKm: 14.66,
       stations: ['vanaz', 'anand-nagar', 'ideal-colony', 'nal-stop', 'garware-college', 'deccan',
                  'sambhaji-udyan', 'pmc', 'civil-court', 'mangalwar-peth', 'pune-station',
                  'ruby-hall', 'bund-garden', 'yerawada', 'kalyani-nagar', 'ramwadi']
@@ -102,14 +102,23 @@
 
   var CONFIG = {
     // Metro fare by trip distance (km, inclusive upper bound -> rupees).
-    fareSlabs: [[2, 10], [4, 15], [8, 20], [12, 25], [18, 30], [Infinity, 35]],
+    // Matches published examples: Swargate–Vanaz ₹30, Swargate–Ramwadi ₹30, Ramwadi–PCMC ₹35.
+    fareSlabs: [[1, 10], [2, 15], [4, 20], [8, 25], [16, 30], [Infinity, 35]],
+
+    // Concessions, as reported in 2023–25 news. Percent off the fare.
+    // card = One Pune card or e-ticket. Weekend means Saturday and Sunday.
+    concessions: {
+      regular: { weekday: 0,  weekend: 0,  label: 'Regular' },
+      card:    { weekday: 10, weekend: 30, label: 'Pune card / e-ticket' },
+      student: { weekday: 30, weekend: 30, label: 'Student' }
+    },
 
     // Metro operations.
     metroSpeedKmh: 33,       // average running speed between stations
     dwellMin: 0.5,           // stop time at each intermediate station
     transferMin: 4,          // walking between platforms at an interchange
     firstTrain: '06:00',
-    lastTrain: '22:00',
+    lastTrain: '23:00',     // extended from 22:00 in January 2025
     peakHeadwayMin: 7,
     offPeakHeadwayMin: 10,
     peakWindows: [['08:00', '11:00'], ['17:00', '20:00']],
