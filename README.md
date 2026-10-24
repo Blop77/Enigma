@@ -170,7 +170,7 @@ node tests/story.test.js       # the story's numbers match the planner and the G
 
 ## Working with Codex (optional)
 
-The project is complete without it. If Codex credits are available at the event, [`AGENTS.md`](AGENTS.md) gives Codex the architecture, rules and ready-to-paste tasks (PMPML GTFS feeders, crowd and lift reports). Line 3, the savings card and accessible mode were built this way.
+The project is complete without it. If Codex credits are available at the event, [`AGENTS.md`](AGENTS.md) gives Codex the architecture, rules and ready-to-paste tasks (PMPML GTFS feeders, crowd and lift reports). Line 3, the savings card, accessible mode, and the offline Ask MetroMitra assistant were built with Codex's help.
 
 ## License
 
