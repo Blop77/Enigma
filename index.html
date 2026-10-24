@@ -154,6 +154,16 @@
 
     <section id="results" class="panel results" aria-live="polite" hidden></section>
 
+    <dialog id="report-dialog" class="report-dialog" aria-labelledby="report-dialog-title">
+      <h2 id="report-dialog-title"></h2>
+      <div class="report-choices">
+        <button type="button" data-report-type="crowded" data-i18n="report.crowded">Crowded</button>
+        <button type="button" data-report-type="lift" data-i18n="report.lift">Lift not working</button>
+        <button type="button" data-report-type="escalator" data-i18n="report.escalator">Escalator not working</button>
+      </div>
+      <button type="button" id="report-dialog-close" class="link-btn" data-i18n="report.close">Close</button>
+    </dialog>
+
     <section class="panel map-panel" aria-label="Pune Metro map" data-i18n-attr="aria-label:map.label">
       <div class="map-head">
         <h2 data-i18n="map.title">Network</h2>
@@ -175,6 +185,7 @@
   <footer class="foot">
     <p data-i18n-html="footer">Fares, timings, coordinates and road costs are <strong>estimates</strong> for planning, not official Maha-Metro data.
        Feeders are a simulation. Built for the Pune Metro hackathon · Urban mobility.</p>
+    <p><a href="story.html" data-i18n="story.link">▶ Ride the story: the pitch in 2 minutes</a></p>
   </footer>
 
   <script src="js/data.js"></script>
@@ -182,6 +193,7 @@
   <script src="js/population.js"></script>
   <script src="js/planner.js"></script>
   <script src="js/savings.js"></script>
+  <script src="js/reports.js"></script>
   <script src="js/gapmap.js"></script>
   <script src="js/vendor/qrcode.js"></script>
   <script src="js/share.js"></script>

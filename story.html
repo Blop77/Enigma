@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>MetroMitra · Ride the story</title>
+  <meta name="description" content="Ride Pune Metro from PCMC to Swargate and see why the last mile keeps people in autos, and how MetroMitra finds the fix.">
+  <meta name="theme-color" content="#120f2b">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="css/story.css">
+  <script>document.documentElement.classList.add('js');</script>
+</head>
+<body>
+  <canvas id="scene" aria-hidden="true"></canvas>
+  <div id="dim" aria-hidden="true"></div>
+
+  <header class="s-top">
+    <a class="s-brand" href="index.html" data-i18n-html="brand">MetroMitra <span class="mr" lang="mr">मेट्रोमित्र</span></a>
+    <p class="led" id="led" aria-hidden="true"><span id="led-clock">08:00</span><span id="led-text"></span></p>
+    <div class="s-actions">
+      <button type="button" id="lang-toggle" class="s-btn" data-i18n="lang.switch" data-i18n-attr="aria-label:lang.switchLabel" aria-label="मराठीत पाहा">मराठी</button>
+      <a class="s-btn s-app" href="index.html" data-i18n="story.openApp">Open the app</a>
+    </div>
+  </header>
+
+  <main id="story">
+    <!-- Each chapter is shown while the train waits at its station (data-stop). -->
+    <section class="chapter hero" data-stop="0" aria-labelledby="h-hero">
+      <p class="kicker" data-i18n="story.kicker">Pune Metro hackathon · Urban mobility</p>
+      <h1 id="h-hero" data-i18n-html="brand">MetroMitra <span class="mr" lang="mr">मेट्रोमित्र</span></h1>
+      <p class="lead" data-i18n="story.hero.title">Pune built a metro. Now let’s get people to it.</p>
+      <p id="hero-sub"></p>
+      <p class="scroll-cue"><span data-i18n="story.scroll">Scroll to ride</span> <i aria-hidden="true">↓</i></p>
+      <a class="skip" href="index.html" data-i18n="story.skip">Skip the ride: open the app →</a>
+    </section>
+
+    <section class="chapter" data-stop="1" aria-labelledby="h-c1">
+      <h2 id="h-c1" data-i18n="story.c1.title">The metro is here</h2>
+      <div class="stats">
+        <p><b data-count="km">32</b><span data-i18n="story.c1.km">km of open line</span></p>
+        <p><b data-count="stations">28</b><span data-i18n="story.c1.stations">stations</span></p>
+        <p><b data-count="headway">6</b><span data-i18n="story.c1.every">minutes between trains at peak</span></p>
+        <p><b id="fares">₹10–35</b><span data-i18n="story.c1.fare">fares on the official chart</span></p>
+      </div>
+      <p id="c1-text"></p>
+      <p class="src" data-i18n="story.c1.src">Source: Maha-Metro timetable and fare chart</p>
+    </section>
+
+    <section class="chapter" data-stop="2" aria-labelledby="h-c2">
+      <h2 id="h-c2" data-i18n="story.c2.title">The trip doesn’t start at a station</h2>
+      <p id="c2-lead"></p>
+      <div class="race" id="race"></div>
+      <p id="c2-punch" class="punch"></p>
+      <p id="c2-verdict"></p>
+    </section>
+
+    <section class="chapter" data-stop="3" aria-labelledby="h-c3">
+      <h2 id="h-c3" data-i18n="story.c3.title">How big is the gap?</h2>
+      <p class="big"><b id="c3-pct">30%</b></p>
+      <p id="c3-text"></p>
+      <div class="people" id="people" role="img"></div>
+      <ul class="s-key">
+        <li><i class="good"></i><span data-i18n="gap.keyGood">Metro beats an auto</span></li>
+        <li><i class="mixed"></i><span data-i18n="gap.keyMixed">Cheaper but slower</span></li>
+        <li><i class="poor"></i><span data-i18n="gap.keyPoor">Auto is better</span></li>
+      </ul>
+      <p id="c3-area" class="note"></p>
+      <p class="src" data-i18n="story.c3.src">Population: WorldPop 2020 (CC BY 4.0)</p>
+    </section>
+
+    <section class="chapter feature" data-stop="4" aria-labelledby="h-c4">
+      <div class="visual stage3d"><canvas id="minimap" role="img" data-i18n-attr="aria-label:gap.mapAria" aria-label="Map of Pune coloured by whether the metro beats an auto"></canvas></div>
+      <div class="words">
+        <h2 id="h-c4" data-i18n="story.c4.title">The Gap Map finds the fix</h2>
+        <p id="c4-text"></p>
+        <p class="result" id="c4-result" aria-live="polite"></p>
+        <ol class="s-recs" id="c4-recs"><li class="muted" data-i18n="gap.testing">Testing a feeder at every station…</li></ol>
+      </div>
+    </section>
+
+    <section class="chapter feature" data-stop="5" aria-labelledby="h-c5">
+      <div class="visual stage3d">
+        <div class="phone" id="phone"><iframe id="phone-app" tabindex="-1" data-i18n-attr="title:story.phoneLabel" title="The MetroMitra trip planner"></iframe></div>
+      </div>
+      <div class="words">
+        <h2 id="h-c5" data-i18n="story.c5.title">And for riders, a planner that tells the truth</h2>
+        <p data-i18n="story.c5.text">Door to door, with the first and last mile, fares from the official chart and an honest verdict.</p>
+        <ul class="chips">
+          <li data-i18n="story.f.lang">English and मराठी</li>
+          <li data-i18n="story.f.offline">Works offline, even underground</li>
+          <li data-i18n="story.f.access">Accessible mode with step-free routes</li>
+          <li data-i18n="story.f.savings">Savings tracker and shareable card</li>
+          <li data-i18n="story.f.share">QR codes for any view</li>
+        </ul>
+        <a class="s-btn primary" id="c5-open" href="index.html" data-i18n="story.c5.try">Open this trip</a>
+      </div>
+    </section>
+
+    <section class="chapter finale" data-stop="6" aria-labelledby="h-c6">
+      <h2 id="h-c6" data-i18n="story.c6.title">End of the line. Start of yours.</h2>
+      <p data-i18n="story.c6.text">Open the Gap Map to see your neighbourhood, or plan your next trip.</p>
+      <div class="cta">
+        <a class="s-btn primary" href="index.html#view=gap" data-i18n="story.c6.gap">🗺️ Open the Gap Map</a>
+        <a class="s-btn" href="index.html#view=plan" data-i18n="story.c6.plan">🧭 Plan a trip</a>
+      </div>
+      <div class="qr" id="qr" role="img" data-i18n-attr="aria-label:story.c6.qr" aria-label="QR code for MetroMitra"></div>
+      <p class="src" data-i18n="story.c6.credits">Fares, timetable and stations: Maha-Metro. Auto tariff: Pune RTA. Population: WorldPop 2020.</p>
+      <p><a href="https://github.com/Blop77/metro-mitra" data-i18n="story.c6.code">Source code on GitHub</a> · <button type="button" class="link" id="replay" data-i18n="story.replay">↑ Ride again</button></p>
+    </section>
+  </main>
+
+  <nav class="linebar" id="linebar" data-i18n-attr="aria-label:story.lineNav" aria-label="Stations on the ride"></nav>
+  <div id="spacer"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/population.js"></script>
+  <script src="js/planner.js"></script>
+  <script src="js/gapmap.js"></script>
+  <script src="js/story-data.js"></script>
+  <script src="js/vendor/qrcode.js"></script>
+  <script src="js/story.js"></script>
+</body>
+</html>

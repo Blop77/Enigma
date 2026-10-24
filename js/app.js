@@ -9,12 +9,14 @@
   const { STATIONS, STATIONS_MR, STATION_ACCESS, STATION_ALIASES, LINES, LANDMARKS, LANDMARKS_MR, CONFIG } = MetroData;
   const P = MetroPlanner, I = I18N, t = I18N.t;
   const Savings = MetroSavings;
+  const Reports = MetroReports;
   const OPEN_STATION_IDS = Object.keys(STATIONS).filter((id) => P.linesAt(id).length > 0);
   const OPEN_LINE_IDS = Object.keys(LINES).filter((id) => LINES[id].status !== 'planned');
   const INITIAL_HASH = location.hash;   // read before showView() rewrites it; the Gap Map restores from it
   const STORE_KEY = 'metromitra-v1';
   const LANG_KEY = 'metromitra-lang';
   const ACCESS_KEY = 'metromitra-accessible';
+  const REPORT_KEY = 'metromitra-reports';
   const MILE_ICON = { walk: '🚶', auto: '🛺', cycle: '🚲' };
 
   const $ = (sel) => document.querySelector(sel);
@@ -28,6 +30,9 @@
   let cardPreviewUrl = null;
   let cardRenderId = 0;
   let accessibleOn = false;
+  let reports = [];
+  let reportStationId = null;
+  let reportAvoids = [];
   let mapSxy = null;         // station -> [x, y] for the planner map as last drawn
 
   /* ------------------------------------------------------------------
@@ -145,6 +150,23 @@
       '<span class="when">' + time + '</span></li>';
   }
 
+  const REPORT_ICON = { crowded: '👥', lift: '🛗', escalator: '↗' };
+  const REPORT_LABEL = { crowded: 'report.crowded', lift: 'report.lift', escalator: 'report.escalator' };
+  function stationReports(id) { return Reports.activeForStation(reports, id, Date.now(), CONFIG.reportExpiryMs); }
+  function reportIcons(id) {
+    return stationReports(id).map((r) => '<span class="report-icon" title="' + t(REPORT_LABEL[r.type]) + '" aria-label="' + t(REPORT_LABEL[r.type]) + '">' + REPORT_ICON[r.type] + '</span>').join('');
+  }
+  function reportButton(id) {
+    return '<button type="button" class="report-problem" data-report-station="' + esc(id) + '">' + t('report.button') + '</button>';
+  }
+  // A broken lift matters only where the rider gets on, changes or gets off;
+  // trains pass through other stations (the planner's avoid works the same way).
+  function liftWarning(id) {
+    if (!accessibleOn || !stationReports(id).some((x) => x.type === 'lift')) return '';
+    return '<span class="lift-warning">' + t('report.liftWarning') + ' <button type="button" class="avoid-station" data-avoid-station="' +
+      esc(id) + '">' + t('report.avoid') + '</button></span>';
+  }
+
   function mileDetail(leg) {
     return fmtKm(leg.km) + ' · ' + fmtMin(leg.min) + (leg.cost ? ' · ~' + fmtRs(leg.cost) : '');
   }
@@ -167,21 +189,25 @@
     const wait = trip.service.startsInMin
       ? fare + t('step.firstTrain', { time: CONFIG.firstTrain })
       : fare + t('step.wait', { min: entryMin, hw });
-    html += step('🎫', t('step.enter', { station: esc(stName(r.from)) }), wait, clock(date, tm));
+    html += step('🎫', t('step.enter', { station: esc(stName(r.from)) }) + reportIcons(r.from), wait + reportButton(r.from) + liftWarning(r.from), clock(date, tm));
     tm += b.waitMin;
 
     r.legs.forEach((leg, i) => {
       const L = LINES[leg.line];
       if (i > 0) {
         const transferMin = CONFIG.transferMin + hw / 2 + (trip.accessible ? CONFIG.access.extraTransferMin : 0);
-        html += step('⇄', t('step.change', { station: esc(stName(leg.stations[0])) }),
-          t('step.changeHow', { line: I.line(leg.line), min: Math.round(transferMin) }), clock(date, tm));
+        const transferStation = leg.stations[0];
+        html += step('⇄', t('step.change', { station: esc(stName(transferStation)) }) + reportIcons(transferStation),
+          t('step.changeHow', { line: I.line(leg.line), min: Math.round(transferMin) }) + reportButton(transferStation) + liftWarning(transferStation), clock(date, tm));
         tm += transferMin;
       }
       const chip = '<span class="chip" style="background:' + L.color + '">' + I.line(leg.line) + '</span>';
+      const endStation = leg.stations[leg.stations.length - 1];
+      const usedReports = Array.from(new Set(leg.stations)).flatMap((id) => stationReports(id).map((x) => ({ id, type: x.type })));
+      const alerts = usedReports.map((x) => '<span class="report-icon" title="' + esc(stName(x.id)) + ': ' + t(REPORT_LABEL[x.type]) + '">' + REPORT_ICON[x.type] + '</span>').join('');
       html += step(L.short.replace('Line ', 'L'),
-        t('step.ride', { line: chip, station: esc(stName(leg.towards)) }),
-        t('step.stops', { n: leg.stops, km: fmtKm(leg.km), station: esc(stName(leg.stations[leg.stations.length - 1])) }),
+        t('step.ride', { line: chip, station: esc(stName(leg.towards)) }) + alerts,
+        t('step.stops', { n: leg.stops, km: fmtKm(leg.km), station: esc(stName(endStation)) }) + reportButton(endStation) + (i === r.legs.length - 1 ? liftWarning(endStation) : ''),
         clock(date, tm), { cls: 'ride', color: L.color });
       tm += leg.min;
     });
@@ -315,6 +341,12 @@
       el('title', {}, c).textContent = bilingual(id);
       c.addEventListener('click', () => pickStation(id));
       c.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pickStation(id); } });
+
+      const activeReports = stationReports(id);
+      if (activeReports.length) {
+        const mark = el('text', { x: x + 9, y: y - 8, class: 'map-report-icons', 'aria-hidden': 'true' }, mapEl);
+        mark.textContent = Array.from(new Set(activeReports.map((r) => REPORT_ICON[r.type]))).join('');
+      }
 
       if (xchg || terminal || onRoute.has(id) || selected.has(id)) {
         const aqua = lines[0] === 'aqua' && !xchg;
@@ -559,7 +591,24 @@
   }
 
   function avoidedStations() {
-    return Object.keys(STATION_ACCESS).filter((id) => STATION_ACCESS[id] && STATION_ACCESS[id].lift === false);
+    return Array.from(new Set(Object.keys(STATION_ACCESS).filter((id) => STATION_ACCESS[id] && STATION_ACCESS[id].lift === false).concat(reportAvoids)));
+  }
+
+  function openReport(id) {
+    reportStationId = id;
+    $('#report-dialog-title').textContent = t('report.title', { station: stName(id) });
+    $('#report-dialog').showModal();
+  }
+
+  function saveReports() {
+    reports = Reports.dropExpired(reports, Date.now(), CONFIG.reportExpiryMs);
+    try { localStorage.setItem(REPORT_KEY, JSON.stringify(reports)); } catch (e) { /* private mode */ }
+  }
+
+  function loadReports() {
+    try { reports = Reports.dropExpired(JSON.parse(localStorage.getItem(REPORT_KEY)) || [], Date.now(), CONFIG.reportExpiryMs); }
+    catch (e) { reports = []; }
+    saveReports();
   }
 
   function locate() {
@@ -644,12 +693,29 @@
   function init() {
     fillPasses();
     load();
+    loadReports();
     setLanguage(initialLang(), false);
     renderSavings();
     const now = new Date();
     whenIn.value = clock(now, 0);
     renderService(now);
     drawMap(null);
+
+    $('#report-dialog').addEventListener('click', (e) => {
+      const choice = e.target.closest('[data-report-type]');
+      if (!choice || !reportStationId) return;
+      reports = Reports.addReport(reports, reportStationId, choice.dataset.reportType, Date.now(), CONFIG.reportExpiryMs);
+      saveReports();
+      $('#report-dialog').close();
+      if (!resultsEl.hidden) plan(true); else drawMap(null);
+    });
+    $('#report-dialog-close').addEventListener('click', () => $('#report-dialog').close());
+    resultsEl.addEventListener('click', (e) => {
+      const report = e.target.closest('[data-report-station]');
+      if (report) return openReport(report.dataset.reportStation);
+      const avoid = e.target.closest('[data-avoid-station]');
+      if (avoid) { reportAvoids = Array.from(new Set(reportAvoids.concat(avoid.dataset.avoidStation))); plan(true); }
+    });
 
     $('#lang-toggle').addEventListener('click', () => setLanguage(I.lang === 'mr' ? 'en' : 'mr', true));
     $('#access-toggle').addEventListener('click', () => {

@@ -74,8 +74,17 @@ test('Every key used in index.html exists', () => {
   keys.forEach((k) => assert.ok(I.STRINGS[k], 'missing ' + k));
 });
 
+test('Every key used in story.html exists', () => {
+  const html = read('story.html');
+  const keys = [...html.matchAll(/data-i18n(?:-html)?="([^"]+)"/g)].map((m) => m[1]);
+  [...html.matchAll(/data-i18n-attr="([^"]+)"/g)].forEach((m) =>
+    m[1].split(';').forEach((pair) => keys.push(pair.split(':')[1].trim())));
+  assert.ok(keys.length > 30, keys.length + ' keys');
+  keys.forEach((k) => assert.ok(I.STRINGS[k], 'missing ' + k));
+});
+
 test('Every key used in the UI scripts exists', () => {
-  const src = read('js/app.js') + read('js/gap-ui.js') + read('js/savings-card.js') + read('js/share.js') + read('js/guide.js');
+  const src = read('js/app.js') + read('js/gap-ui.js') + read('js/savings-card.js') + read('js/share.js') + read('js/guide.js') + read('js/story.js');
   // Literal keys only; keys built at run time ('step.first.' + mode) are checked below.
   const keys = [...src.matchAll(/\bt\('([\w.]+)'/g), ...src.matchAll(/showError\('([\w.]+)'\)/g)]
     .map((m) => m[1]).filter((k) => !k.endsWith('.'));
@@ -92,7 +101,8 @@ test('Every key used in the UI scripts exists', () => {
 });
 
 test('Every string in the dictionary is used', () => {
-  const src = read('js/app.js') + read('js/gap-ui.js') + read('js/savings-card.js') + read('js/share.js') + read('js/guide.js') + read('index.html');
+  const src = read('js/app.js') + read('js/gap-ui.js') + read('js/savings-card.js') + read('js/share.js') + read('js/guide.js') + read('index.html') +
+    read('js/story.js') + read('story.html');
   const dynamic = /^(step\.(first|last)\.|mode\.|pass\.|line\.|kind\.)/;
   Object.keys(I.STRINGS).forEach((k) => {
     const base = k.endsWith('.one') ? k.slice(0, -4) : k;

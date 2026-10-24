@@ -14,12 +14,16 @@ It is plain HTML, CSS and JavaScript with **no build step and no dependencies**,
 | `js/population.js` | Residents in every Gap Map square (WorldPop 2020) | **Generated** by `tools/population.py`; do not edit by hand. Rerun it if the grid in `CONFIG.gapMap` changes (a test checks they match). |
 | `js/planner.js` | Trip engine: routing, fares, concessions, first/last mile, verdict | No DOM. UMD: works in Node and the browser. |
 | `js/savings.js` | Month filtering and totals for the savings tracker | No DOM. UMD: works in Node and the browser. |
+| `js/reports.js` | Station reports (crowded / lift / escalator) with expiry | No DOM. UMD: works in Node and the browser. A lift report matters only where riders board, change or alight. |
 | `js/gapmap.js` | Gap Map engine: grid, scoring, feeders, recommendations | No DOM. Must stay consistent with `planner.js` (a test checks this). |
 | `js/app.js` | Trip planner UI, tabs, savings tracker; exposes `window.MetroMitra` | Browser only. |
 | `js/savings-card.js` | Draws and exports the shareable savings card | Browser only; canvas UI. |
 | `js/gap-ui.js` | Gap Map UI, feeder simulator, city report; keeps the view's settings in the URL | Browser only. Call `syncHash()` after any change to hub, time, Line 3 or feeders. |
 | `js/share.js` | `encodeGap`/`decodeGap` (pure, tested) and the QR / copy-link dialog | Decoding must ignore unknown values, never throw. |
 | `js/guide.js` | First-visit guide | Write i18n keys out in full so the i18n test can check them. |
+| `story.html`, `css/story.css`, `js/story.js` | The scroll-driven pitch: a canvas train ride with one chapter per stop | Browser only. Numbers come only from `js/story-data.js`; scene sizes are world units scaled by `S`. |
+| `js/story-data.js` | Every number the story shows (`basics()`, `gap()`) from the engines | No DOM. UMD: works in Node, the browser and the worker. |
+| `js/story-worker.js` | Runs `MetroStory.gap()` in a Web Worker | Keep its `importScripts` list in step with the engines' dependencies. |
 | `js/vendor/qrcode.js` | Third-party QR generator (MIT) | Do not edit. |
 | `js/i18n.js` | Every user-visible string as `[English, Marathi]`; `I18N.t(key, vars)`, `I18N.station/place/line` for names | **No string literals for users anywhere else.** Add both languages for every new key. |
 | `css/style.css` | All styles; colour tokens on `:root` with a dark-mode override | Mobile first, two columns from 900px. |
@@ -32,7 +36,9 @@ node tests/planner.test.js     # must pass
 node tests/gapmap.test.js      # must pass
 node tests/i18n.test.js        # must pass: catches missing keys and untranslated strings
 node tests/savings.test.js     # savings totals and month filtering
+node tests/reports.test.js     # station reports and expiry
 node tests/share.test.js       # share-link encode/decode
+node tests/story.test.js       # the story's numbers match the planner and the Gap Map
 npx serve .                    # then open http://localhost:3000
 ```
 
