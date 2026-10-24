@@ -108,13 +108,15 @@
     var tagLines = wrap(ctx, tagline, 780);
     tagLines.slice(0, 2).forEach(function (line, i) { ctx.fillText(line, 540, 300 + i * 37); });
 
+    // Three 270 px boxes spread across the same 888 px as the divider below (x 96–984).
     var blocks = [
       { x: 96, color: PURPLE, value: new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(data.n),
         text: t('sav.card.trips') },
-      { x: 390, color: AQUA, value: '₹' + new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(data.rs),
+      { x: 405, color: AQUA, value: '₹' + new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(data.rs),
         text: t('sav.saved') },
-      { x: 684, color: PURPLE, value: new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(data.co2 >= 1000 ? data.co2 / 1000 : Math.round(data.co2)),
-        text: t('sav.co2'), caption: data.co2 >= 1000 ? t('unit.kg') : t('unit.g') }
+      { x: 714, color: PURPLE, value: new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(data.co2 >= 1000 ? data.co2 / 1000 : Math.round(data.co2)) +
+          ' ' + (data.co2 >= 1000 ? t('unit.kg') : t('unit.g')),
+        text: t('sav.co2') }
     ];
 
     blocks.forEach(function (block) {
@@ -131,11 +133,6 @@
       ctx.fillText(block.value, block.x + 135, 535);
       ctx.fillStyle = MUTED;
       label(ctx, block.text, block.x + 135, 620, 232);
-      if (block.caption) {
-        ctx.fillStyle = block.color;
-        ctx.font = '700 22px ' + FONT;
-        ctx.fillText(block.caption, block.x + 135, 680);
-      }
     });
 
     ctx.fillStyle = '#e9e0ef';

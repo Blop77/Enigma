@@ -22,22 +22,22 @@ Nobody can see where this happens. Ridership numbers say *how many* people use a
 
 - **Splits Pune into ~0.9 km squares.** For every square and each of 12 major hubs (Hinjewadi, Kharadi, Magarpatta, Bhosari MIDC, the railway station, Swargate, the airport, Camp, Fergusson, SPPU, COEP, MIT-WPU), it plans the trip door to door and compares it with an auto.
 - **Colours each square:** green where the metro beats an auto, amber where it's cheaper but slower, red where an auto is simply better.
-- **Gives one headline number:** *"At peak hour, the metro beats an auto from 33% of Pune's area near the metro."*
-- **Simulates feeders** (₹10 e-bus or shared e-rickshaw from a station, up to 6 km). It tests a feeder at every station and greedily picks the five that improve access the most: **33% → 51%**.
+- **Gives one headline number:** *"At peak hour, the metro beats an auto from 37% of Pune's area near the metro."*
+- **Simulates feeders** (₹10 e-bus or shared e-rickshaw from a station, up to 6 km). It tests a feeder at every station and greedily picks the five that improve access the most: **37% → 53%**.
 - **Lets you place feeders yourself:** tap any station to add or remove one and the map updates instantly.
 - **City report:** ranks all 12 hubs by metro access, with the single best feeder for each. Print it or save it as a PDF to hand to decision-makers.
 - **Tap any square** to see every trip from there (route, time and cost vs an auto), then open it in the trip planner.
 
-What the model finds (peak hour, with the official fares and timetable below):
+What the model finds (peak hour; official fares, timetable and auto tariff, road model calibrated on real trips):
 
 | Finding | Number |
 |---|---|
-| Worst-served hub | **Hinjewadi**: the metro wins from 19% of the area; the planned Line 3 scenario raises it to 54% |
-| Best-served hub | **COEP**: 74% |
+| Worst-served hub | **Hinjewadi**: the metro wins from only 23% of the area; the planned Line 3 scenario raises it to **54%** |
+| Best-served hubs | **Pune Railway Station** and **COEP**: 77% |
 | Best single feeder for the city | **Ramwadi**: serves Kharadi, Viman Nagar and the airport |
-| One feeder at Kalyani Nagar, for Magarpatta | Area where an auto is better: 35% → 9% |
-| Opening Range Hill station (built, not yet open) | Metro wins for SPPU trips: 25% → 37%; city-wide: 33% → 38% |
-| Five suggested feeders | Area where the metro wins: **33% → 51%** |
+| One feeder at Kalyani Nagar, for the Airport | Area where an auto is better: 26% → 11% |
+| Opening Range Hill station (built, not yet open) | Metro wins for SPPU trips: 26% → 42%; city-wide: 37% → 42% |
+| Five suggested feeders | Area where the metro wins: **37% → 53%** |
 
 ### 🌐 English / मराठी
 
@@ -45,7 +45,7 @@ The whole app (both tabs, the city report, errors and units) switches to Marathi
 
 ### 🚈 Line 3 (planned)
 
-The Gap Map can include the planned Hinjewadi–Shivajinagar Line 3 as a scenario. At peak hour, the area where the metro beats an auto for trips to Hinjewadi Phase 1 rises from **19% to 54%** in this model. Line 3's 45-minute end-to-end time is an estimate; the station list and coordinates are unverified estimates that should be checked on a map. PMRDA's fare is modeled with the existing slabs and may differ from the final fare.
+The Gap Map can include the planned Hinjewadi–Shivajinagar Line 3 as a scenario. At peak hour, the area where the metro beats an auto for trips to Hinjewadi Phase 1 rises from **23% to 54%** in this model. Line 3's 45-minute end-to-end time is an estimate; the station list and coordinates are unverified estimates that should be checked on a map. PMRDA's fare is modeled with the existing slabs and may differ from the final fare.
 
 ### 🧭 Trip planner (for riders)
 
@@ -90,12 +90,14 @@ tests/           Engine and translation tests (Node, no dependencies)
 | **Stations** | 13 open on Line 1 (Range Hill not yet open), 16 on Line 2 | **Maha-Metro project profile** |
 | **Hours, frequency** | 06:00–23:00; every 6 min at peak (8–11 AM, 4–8 PM), every 10 min otherwise | **Official timetable, w.e.f. 15 Aug 2025** |
 | **End-to-end times** | PCMC–Swargate 34 min / 17.5 km; Vanaz–Ramwadi 37 min / 14.5 km (speeds calibrated to match) | **Official timetable** |
-| Planned Line 3 | 23.3 km; 45 min in the model | Corridor length supplied; run time is an estimate |
+| **Auto fare** | ₹26 for the first 1.5 km, ₹17.14/km after, +25% from midnight to 5 AM | **Pune RTA official meter tariff** (app autos charge more, so metro savings shown are conservative) |
+| Road model | Road distance = 1.39 × straight line; 14.6 km/h at 9 AM, 24.1 km/h at 2 PM; cab ₹35 + ₹22.5/km, ×1.5 surge at peak; auto wait 4 min; station entry 2.5 min; interchange 4 min | Fitted to 4 team-collected trips (MIT-WPU → Airport, MIT-WPU → Pune Station, Hinjewadi → Shivajinagar, Kharadi → Pune Station), stored as ranges in `CALIBRATION_TRIPS`; a test keeps the model within 10% of every range. The ranges are summaries, not app screenshots |
+| Planned Line 3 | 23.3 km; 45 min in the model; PMRDA fares estimated from distance slabs | Corridor length supplied; run time, fares, station list and coordinates are estimates |
 | Concessions | Student 30% daily; card/e-ticket 10% weekdays, 30% weekends | News reports 2023–25 |
 | Station coordinates, Marathi names | hand-entered | Approximate; please check against signage |
-| Auto / cab tariffs, road speeds, CO₂, feeder model | see `CONFIG` | Estimates |
+| CO₂, feeder model | see `CONFIG` | Estimates |
 
-> ⚠️ Lines 1–2 fares, open stations and operating times use official Maha-Metro material. Line 3's timing and station list/coordinates are estimates; road costs, emissions and feeder assumptions are also estimates. Everything lives in `js/data.js`, so each fix is a one-line edit, and the Gap Map and the planner both update. Search also understands the fare chart's station names (Paud Phata, S.N.D.T. College, R.T.O., Kasba Peth, Nashik Phata, Mahatma Phule Mandai, District Court).
+> ⚠️ Lines 1–2 fares, open stations and operating times use official Maha-Metro material, the auto tariff is Pune RTA's, and the road model is calibrated on team-collected trips. Line 3's timing, fares, station list and coordinates are estimates, as are coordinates, CO₂ and the feeder model. Everything lives in `js/data.js`, so each fix is a one-line edit, and the Gap Map and the planner both update. Search also understands the fare chart's station names (Paud Phata, S.N.D.T. College, R.T.O., Kasba Peth, Nashik Phata, Mahatma Phule Mandai, Civil Court).
 
 ## Run it
 
@@ -114,10 +116,10 @@ node tests/savings.test.js     # savings totals and month filtering
 
 ## Demo script (3 minutes)
 
-1. **The problem (Gap Map, all hubs, peak).** "The metro beats an auto from only 33% of Pune. Amber is everywhere: the metro is cheaper, but the last mile makes it slower."
-2. **Pick Hinjewadi.** The map shows 19%. Enable Line 3 to compare the modeled rise to 54%.
+1. **The problem (Gap Map, all hubs, peak).** "The metro beats an auto from only 37% of Pune. Amber is everywhere: the metro is cheaper, but the last mile makes it slower."
+2. **Pick Hinjewadi.** The map turns red: 23%. Tick *Include Line 3 (planned)* and watch it rise to 54%. "This is why Line 3 matters."
 3. **Pick Kharadi.** Red around EON IT Park. Tap a red square to show the 5 km auto from Ramwadi that kills the trip.
-4. **Add the suggested feeders.** Watch the map turn green: 33% → 51%. Then tap a station to add a feeder by hand.
+4. **Add the suggested feeders.** Watch the map turn green: 37% → 53%. Then tap a station to add a feeder by hand.
 5. **City report.** "Here is the one feeder each hub needs." Print it as a PDF for the judges.
 6. **Open in trip planner** from a square. Show the honest verdict, switch to a *Student* ticket, then tap *I took this trip*.
 7. **Airplane mode.** Plan again: it still works offline.

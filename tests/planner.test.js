@@ -2,7 +2,7 @@
 'use strict';
 const assert = require('assert');
 const P = require('../js/planner.js');
-const { LINES, STATIONS, LANDMARKS, CONFIG, FARE_CODES, FARE_CHART, FARE_ASYMMETRIC, STATION_CODES, STATION_ALIASES } = require('../js/data.js');
+const { LINES, STATIONS, LANDMARKS, CONFIG, FARE_CODES, FARE_CHART, FARE_ASYMMETRIC, STATION_CODES, STATION_ALIASES, CALIBRATION_TRIPS } = require('../js/data.js');
 
 let passed = 0;
 function test(name, fn) {
@@ -193,7 +193,44 @@ test('Trip cost uses the discounted fare', () => {
 
 test('Auto fare: minimum fare covers the first 1.5 km', () => {
   assert.strictEqual(P.autoFare(1), CONFIG.auto.baseFare);
-  assert.strictEqual(P.autoFare(2.5), CONFIG.auto.baseFare + CONFIG.auto.perKm);
+  // Meters show whole rupees; ₹17.14/km makes the exact fare ₹43.14.
+  assert.strictEqual(P.autoFare(2.5), Math.round(CONFIG.auto.baseFare + CONFIG.auto.perKm));
+});
+
+test('Auto night surcharge: +25% from midnight to 5 AM only', () => {
+  const day = P.autoFare(10, at(14)), night = P.autoFare(10, at(1));
+  assert.strictEqual(P.autoFare(10), day, 'no date means the day rate');
+  assert.strictEqual(night, Math.round((CONFIG.auto.baseFare + (10 - CONFIG.auto.baseKm) * CONFIG.auto.perKm) * 1.25));
+  assert.strictEqual(P.autoFare(10, at(5)), day, 'surcharge ends at 5 AM');
+});
+
+test('Road model reproduces the team\'s collected trips', () => {
+  const where = (name) => {
+    const l = LANDMARKS.find((x) => x[0] === name);
+    if (l) return { lat: l[1], lng: l[2] };
+    const id = Object.keys(STATIONS).find((k) => STATIONS[k][0] === name);
+    return { lat: STATIONS[id][1], lng: STATIONS[id][2] };
+  };
+  // Each value must land inside the collected [low, high] range, widened by 10%.
+  const within = (got, [lo, hi], what) =>
+    assert.ok(got >= lo * 0.9 && got <= hi * 1.1, what + ': ' + got.toFixed(1) + ' not in ' + lo + '–' + hi);
+  assert.ok(CALIBRATION_TRIPS.length >= 4);
+  CALIBRATION_TRIPS.forEach((trip) => {
+    const label = trip.from + ' → ' + trip.to;
+    const km = P.roadKm(where(trip.from), where(trip.to));
+    within(km, trip.km, label + ' km');
+    within(P.autoFare(km), trip.auto, label + ' auto ₹');
+    within(P.directRoad('cab', km, false).cost, trip.cab, label + ' cab ₹ at 2 PM');
+    within(P.directRoad('cab', km, true).cost, trip.cabPeak, label + ' cab ₹ at 9 AM');
+    within(km / CONFIG.roadKmhPeak * 60, trip.peakMin, label + ' 9 AM min');
+    within(km / CONFIG.roadKmhOffPeak * 60, trip.offMin, label + ' 2 PM min');
+  });
+});
+
+test('Cabs surge at peak hours, autos stay on the meter', () => {
+  assert.strictEqual(P.directRoad('cab', 10, true).cost, Math.round(P.cabFare(10) * CONFIG.cab.peakSurge));
+  assert.strictEqual(P.directRoad('cab', 10, false).cost, P.cabFare(10));
+  assert.strictEqual(P.directRoad('auto', 10, true).cost, P.directRoad('auto', 10, false).cost);
 });
 
 test('Peak hours and service window', () => {

@@ -116,9 +116,14 @@
   // Concession applied to a distance-based fare.
   function ticketFare(km, pass, date) { return concession(metroFare(km), pass, date); }
 
-  function autoFare(km) {
-    var a = CONFIG.auto;
-    return Math.round(a.baseFare + Math.max(0, km - a.baseKm) * a.perKm);
+  // Meter fare; pass the date to add the night surcharge (midnight to 5 AM).
+  function autoFare(km, date) {
+    var a = CONFIG.auto, fare = a.baseFare + Math.max(0, km - a.baseKm) * a.perKm;
+    if (date && a.night) {
+      var m = minuteOfDay(date);
+      if (m >= hhmm(a.night.from) && m < hhmm(a.night.to)) fare *= 1 + a.night.pct / 100;
+    }
+    return Math.round(fare);
   }
 
   function cabFare(km) {
@@ -273,13 +278,14 @@
     return { mode: 'auto', km: km, min: CONFIG.auto.waitMin + km / speed * 60, cost: autoFare(km), co2: km * CONFIG.co2.auto };
   }
 
-  function directRoad(kind, km, peak) {
+  // date is optional; with it, an auto at night pays the surcharge.
+  function directRoad(kind, km, peak, date) {
     var speed = peak ? CONFIG.roadKmhPeak : CONFIG.roadKmhOffPeak;
     var t = CONFIG[kind];
     return {
       mode: kind, km: km,
       min: t.waitMin + km / speed * 60,
-      cost: kind === 'auto' ? autoFare(km) : cabFare(km),
+      cost: kind === 'auto' ? autoFare(km, date) : Math.round(cabFare(km) * (peak ? CONFIG.cab.peakSurge : 1)),
       co2: km * CONFIG.co2[kind]
     };
   }
@@ -333,7 +339,7 @@
     options.sort(function (a, b) { return (a.min - b.min) || (a.cost - b.cost); });
 
     var km = roadKm(origin, dest);
-    var direct = { auto: directRoad('auto', km, peak), cab: directRoad('cab', km, peak) };
+    var direct = { auto: directRoad('auto', km, peak, date), cab: directRoad('cab', km, peak, date) };
     var best = options[0] || null;
 
     return {
