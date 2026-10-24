@@ -54,7 +54,8 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Noto Sans Devanagari",
+        "Nirmala UI", "Kohinoor Devanagari", sans-serif;
 }
 button, input, select { font: inherit; color: inherit; }
 h1, h2, h3 { margin: 0; line-height: 1.2; }
@@ -73,6 +74,12 @@ h1, h2, h3 { margin: 0; line-height: 1.2; }
 .brand h1 { font-size: 22px; }
 .mr { font-weight: 500; font-size: 15px; color: var(--muted); margin-left: 4px; }
 .tagline { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+.top-right { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lang-btn {
+  border: 1px solid var(--brand); color: var(--brand); background: var(--panel); border-radius: 999px;
+  padding: 6px 14px; font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.lang-btn:hover { background: var(--brand); color: var(--brand-ink); }
 .service {
   font-size: 13px; padding: 6px 12px; border-radius: 999px; background: var(--panel);
   border: 1px solid var(--line);

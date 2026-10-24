@@ -114,6 +114,39 @@
     ['Magarpatta City',             18.5157, 73.9272]
   ];
 
+  // Landmark names in Marathi (keyed by the English name above). Please have
+  // a native speaker check these too.
+  var LANDMARKS_MR = {
+    'MIT-WPU, Kothrud': 'एमआयटी-डब्ल्यूपीयू, कोथरूड',
+    'Fergusson College': 'फर्ग्युसन कॉलेज',
+    'COEP': 'सीओईपी',
+    'Shaniwar Wada': 'शनिवार वाडा',
+    'Dagdusheth Ganpati': 'दगडूशेठ गणपती',
+    'Laxmi Road': 'लक्ष्मी रस्ता',
+    'Sarasbaug': 'सारसबाग',
+    'Parvati Hill': 'पर्वती',
+    'Kothrud': 'कोथरूड',
+    'Karve Nagar': 'कर्वेनगर',
+    'Katraj': 'कात्रज',
+    'Savitribai Phule Pune University': 'सावित्रीबाई फुले पुणे विद्यापीठ',
+    'Aundh': 'औंध',
+    'Baner': 'बाणेर',
+    'Balewadi Stadium': 'बालेवाडी स्टेडियम',
+    'Wakad': 'वाकड',
+    'Hinjewadi Phase 1': 'हिंजवडी फेज 1',
+    'Nigdi': 'निगडी',
+    'Bhosari MIDC': 'भोसरी एमआयडीसी',
+    'Camp (MG Road)': 'कॅम्प (एम.जी. रोड)',
+    'Koregaon Park': 'कोरेगाव पार्क',
+    'Aga Khan Palace': 'आगाखान पॅलेस',
+    'Viman Nagar': 'विमाननगर',
+    'Phoenix Marketcity': 'फिनिक्स मार्केटसिटी',
+    'Pune Airport': 'पुणे विमानतळ',
+    'Kharadi (EON IT Park)': 'खराडी (इऑन आयटी पार्क)',
+    'Hadapsar': 'हडपसर',
+    'Magarpatta City': 'मगरपट्टा सिटी'
+  };
+
   var CONFIG = {
     // Metro fare by trip distance (km, inclusive upper bound -> rupees).
     // Matches published examples: Swargate–Vanaz ₹30, Swargate–Ramwadi ₹30, Ramwadi–PCMC ₹35.
@@ -177,7 +210,8 @@
     'Fergusson College', 'Savitribai Phule Pune University', 'COEP', 'MIT-WPU, Kothrud'
   ];
 
-  var MetroData = { STATIONS: STATIONS, STATIONS_MR: STATIONS_MR, LINES: LINES, LANDMARKS: LANDMARKS, HUBS: HUBS, CONFIG: CONFIG };
+  var MetroData = { STATIONS: STATIONS, STATIONS_MR: STATIONS_MR, LINES: LINES, LANDMARKS: LANDMARKS,
+                    LANDMARKS_MR: LANDMARKS_MR, HUBS: HUBS, CONFIG: CONFIG };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = MetroData;
   else root.MetroData = MetroData;

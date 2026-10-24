@@ -1,29 +1,32 @@
 /*
  * gap-ui.js — the Gap Map view: a heat map of where Pune Metro beats an auto,
- * and a feeder-bus simulator. Depends on data.js, planner.js, gapmap.js and
- * app.js (window.MetroMitra for formatting and opening the trip planner).
+ * and a feeder-bus simulator. Depends on data.js, i18n.js, planner.js,
+ * gapmap.js and app.js (window.MetroMitra for formatting and opening the
+ * trip planner).
  */
 (function () {
   'use strict';
 
   const { STATIONS, STATIONS_MR, LINES, LANDMARKS, HUBS, CONFIG } = MetroData;
-  const P = MetroPlanner, G = GapMap, M = window.MetroMitra;
+  const P = MetroPlanner, G = GapMap, M = window.MetroMitra, I = I18N, t = I18N.t;
   const $ = (sel) => document.querySelector(sel);
   const svg = $('#gap-map');
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const KIND_ICON = { metro: '✅', tradeoff: '⚖️', road: '🛺' };
-  const KIND_TEXT = { metro: 'Metro wins', tradeoff: 'Metro cheaper, slower', road: 'Auto better' };
 
   let state = null;          // GapMap.build() result for the current time, with the chosen feeders
   let bare = null;           // the same grid with no feeders (recommend() leaves it unchanged)
   let base = null;           // summary of bare, for "before → after"
-  let recs = [];             // suggested feeders for the current hub and time
+  let recs = null;           // suggested feeders for the current hub and time (null while calculating)
+  let reportRows = null;     // city report rows, kept so a language switch needn't recompute
   let selected = null;       // index of the tapped cell
   let started = false;
 
   const hub = () => +$('#gap-hub').value;               // -1 = all hubs
   const peak = () => document.querySelector('input[name=gap-time]:checked').value === 'peak';
-  const stName = (id) => STATIONS[id][0];
+  const stName = (id) => I.station(id);
+  const when = () => t(peak() ? 'gap.when.peak' : 'gap.when.off');
+  const km2 = (n) => n.toFixed(1);
 
   /* ------------------------------------------------------------------
    * Building and summarising
@@ -41,9 +44,9 @@
   let pending = 0;
   function refresh() {
     base = G.summary(bare, hub());
-    recs = [];
+    recs = null;
     render();
-    $('#recs').innerHTML = '<li class="muted">Testing a feeder at every station…</li>';
+    renderRecs();
     // Recommending takes about a second; let the map paint first.
     const ticket = ++pending;
     setTimeout(() => {
@@ -54,10 +57,6 @@
     }, 30);
   }
 
-  function hubLabel() {
-    return hub() < 0 ? 'Pune\'s ' + HUBS.length + ' main job, college and travel hubs' : HUBS[hub()];
-  }
-
   function renderHeadline() {
     const now = G.summary(state, hub());
     const feeders = G.feederList(state).length;
@@ -65,26 +64,30 @@
     $('#gap-after').innerHTML = feeders
       ? ' <span class="arrow">→</span> <b class="after">' + Math.round(now.goodPct) + '%</b>'
       : '';
-    $('#gap-caption').innerHTML = 'of Pune\'s area near the metro, the metro beats an auto for ' +
-      (hub() < 0 ? 'most trips to ' : 'getting to ') + '<b>' + M.esc(hubLabel()) + '</b> at ' +
-      (peak() ? 'peak hour' : 'off-peak times') + '.' +
-      (feeders ? ' With ' + feeders + ' feeder' + (feeders > 1 ? 's' : '') + ' it rises to <b>' + Math.round(now.goodPct) +
-        '%</b>, and the area where an auto is better shrinks from ' + Math.round(base.poorPct) + '% to <b>' +
-        Math.round(now.poorPct) + '%</b>.' : '');
+    $('#gap-caption').innerHTML = (hub() < 0
+      ? t('gap.caption.all', { n: HUBS.length, when: when() })
+      : t('gap.caption.hub', { hub: M.esc(I.place(HUBS[hub()])), when: when() })) +
+      (feeders ? t('gap.withFeeders', { n: feeders, good: Math.round(now.goodPct),
+        poor0: Math.round(base.poorPct), poor1: Math.round(now.poorPct) }) : '');
     const bar = $('#gap-bar').children;
     bar[0].style.width = now.goodPct + '%';
     bar[1].style.width = now.mixedPct + '%';
     bar[2].style.width = now.poorPct + '%';
   }
 
+  function gainHtml(r) {
+    return t('gap.gain', { km2: km2(r.gainKm2) });
+  }
+
   function renderRecs() {
     const ol = $('#recs');
-    if (!recs.length) { ol.innerHTML = '<li class="muted">No feeder would help here.</li>'; return; }
+    if (!recs) { ol.innerHTML = '<li class="muted">' + t('gap.testing') + '</li>'; return; }
+    if (!recs.length) { ol.innerHTML = '<li class="muted">' + t('gap.noFeeder') + '</li>'; return; }
     const on = new Set(G.feederList(state));
     ol.innerHTML = recs.map((r, i) =>
       '<li><label><input type="checkbox" data-station="' + r.station + '"' + (on.has(r.station) ? ' checked' : '') + '>' +
       '<span class="rec-name">' + (i + 1) + '. ' + M.esc(stName(r.station)) + '</span>' +
-      '<span class="rec-gain" title="Area that gets better metro access">+' + r.gainKm2.toFixed(1) + ' km² better served</span></label></li>').join('');
+      '<span class="rec-gain" title="' + M.esc(t('gap.gainTitle')) + '">' + gainHtml(r) + '</span></label></li>').join('');
     ol.querySelectorAll('input').forEach((cb) => cb.addEventListener('change', () => toggleFeeder(cb.dataset.station, cb.checked)));
   }
 
@@ -137,18 +140,18 @@
 
     const feeders = new Set(G.feederList(state));
     Object.keys(STATIONS).forEach((id) => {
-      const [x, y] = sxy(id), lines = P.linesAt(id);
-      const c = el('circle', { cx: x, cy: y, r: feeders.has(id) ? 7 : 4.5,
-        class: 'stn' + (feeders.has(id) ? ' feeder' : ''), stroke: LINES[lines[0]].color,
-        tabindex: 0, role: 'button', 'aria-label': stName(id) + (feeders.has(id) ? ', feeder on' : ', add feeder') }, svg);
-      el('title', {}, c).textContent = stName(id) + (STATIONS_MR[id] ? ' · ' + STATIONS_MR[id] : '') +
-        (feeders.has(id) ? ' · feeder on (tap to remove)' : ' · tap to add a feeder');
-      const toggle = () => toggleFeeder(id, !feeders.has(id));
+      const [x, y] = sxy(id), lines = P.linesAt(id), on = feeders.has(id);
+      const other = I.lang === 'mr' ? STATIONS[id][0] : STATIONS_MR[id];
+      const c = el('circle', { cx: x, cy: y, r: on ? 7 : 4.5,
+        class: 'stn' + (on ? ' feeder' : ''), stroke: LINES[lines[0]].color,
+        tabindex: 0, role: 'button', 'aria-label': stName(id) + t(on ? 'gap.ariaOn' : 'gap.ariaAdd') }, svg);
+      el('title', {}, c).textContent = stName(id) + (other ? ' · ' + other : '') + t(on ? 'gap.feederOn' : 'gap.feederAdd');
+      const toggle = () => toggleFeeder(id, !on);
       c.addEventListener('click', toggle);
       c.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
-      if (feeders.has(id)) {
-        const t = el('text', { x: x + 10, y: y - 8, class: 'lbl feeder-lbl' }, svg);
-        t.textContent = '🚌 ' + stName(id);
+      if (on) {
+        const tx = el('text', { x: x + 10, y: y - 8, class: 'lbl feeder-lbl' }, svg);
+        tx.textContent = '🚌 ' + stName(id);
       }
     });
 
@@ -158,10 +161,10 @@
       if (h >= 0 && j !== h) return;
       const [x, y] = xy(hb);
       const d = el('rect', { x: x - 5, y: y - 5, width: 10, height: 10, transform: 'rotate(45 ' + x + ' ' + y + ')', class: 'hub' }, svg);
-      el('title', {}, d).textContent = hb.name;
+      el('title', {}, d).textContent = I.place(hb.name);
       if (h < 0) return;
-      const t = el('text', { x: x > W * 0.7 ? x - 10 : x + 10, y: y + 4, class: 'lbl hub-lbl', 'text-anchor': x > W * 0.7 ? 'end' : 'start' }, svg);
-      t.textContent = hb.name;
+      const tx = el('text', { x: x > W * 0.7 ? x - 10 : x + 10, y: y + 4, class: 'lbl hub-lbl', 'text-anchor': x > W * 0.7 ? 'end' : 'start' }, svg);
+      tx.textContent = I.place(hb.name);
     });
   }
 
@@ -172,8 +175,8 @@
   let reportRun = 0;
   function buildReport() {
     const run = ++reportRun, rows = [], src = bare;
-    $('#report-lead').textContent = 'Ranking hubs…';
-    $('#report-body').innerHTML = '';
+    reportRows = null;
+    renderReport();
     let j = 0;
     (function step() {
       if (run !== reportRun) return;            // settings changed; a newer report is running
@@ -184,25 +187,35 @@
         setTimeout(step, 0);
         return;
       }
-      rows.sort((a, b) => a.good - b.good);
-      const worst = rows[0], best = rows[rows.length - 1];
-      $('#report-lead').innerHTML = 'At ' + (peak() ? 'peak hour' : 'off-peak times') + ', <b>' + M.esc(worst.name) +
-        '</b> is the worst-served hub: the metro beats an auto from only <b>' + Math.round(worst.good) + '%</b> of the area. ' +
-        '<b>' + M.esc(best.name) + '</b> is the best served (' + Math.round(best.good) + '%).';
-      $('#report-body').innerHTML = rows.map((r) =>
-        '<tr><td>' + M.esc(r.name) + '</td>' +
-        '<td class="pct good">' + Math.round(r.good) + '%</td>' +
-        '<td class="pct poor">' + Math.round(r.poor) + '%</td>' +
-        '<td>' + (r.feeder ? '🚌 ' + M.esc(stName(r.feeder.station)) + '<small>+' + r.feeder.gainKm2.toFixed(1) + ' km² better served</small>' : '<span class="muted">none needed</span>') + '</td>' +
-        '<td>' + (r.feeder ? '<span class="pct good">' + Math.round(r.feeder.goodPct) + '%</span> / <span class="pct poor">' +
-          Math.round(r.feeder.poorPct) + '%</span>' : '–') + '</td></tr>').join('');
+      reportRows = rows.sort((a, b) => a.good - b.good);
+      renderReport();
     })();
+  }
+
+  function renderReport() {
+    if (!reportRows) {
+      $('#report-lead').textContent = t('rep.ranking');
+      $('#report-body').innerHTML = '';
+      return;
+    }
+    const worst = reportRows[0], best = reportRows[reportRows.length - 1];
+    $('#report-lead').innerHTML = t('rep.lead', { worst: M.esc(I.place(worst.name)), when: when(),
+      wpct: Math.round(worst.good), best: M.esc(I.place(best.name)), bpct: Math.round(best.good) });
+    $('#report-body').innerHTML = reportRows.map((r) =>
+      '<tr><td>' + M.esc(I.place(r.name)) + '</td>' +
+      '<td class="pct good">' + Math.round(r.good) + '%</td>' +
+      '<td class="pct poor">' + Math.round(r.poor) + '%</td>' +
+      '<td>' + (r.feeder ? '🚌 ' + M.esc(stName(r.feeder.station)) + '<small>' + gainHtml(r.feeder) + '</small>'
+        : '<span class="muted">' + t('rep.none') + '</span>') + '</td>' +
+      '<td>' + (r.feeder ? '<span class="pct good">' + Math.round(r.feeder.goodPct) + '%</span> / <span class="pct poor">' +
+        Math.round(r.feeder.poorPct) + '%</span>' : '–') + '</td></tr>').join('');
   }
 
   /* ------------------------------------------------------------------
    * Cell details
    * ------------------------------------------------------------------ */
-  function areaName(c) {
+  // Nearest named place within 2.5 km (an English name), or null.
+  function nearestPlace(c) {
     let best = null;
     LANDMARKS.forEach(([name, lat, lng]) => {
       const d = P.haversineKm(c, { lat, lng });
@@ -210,9 +223,9 @@
     });
     Object.keys(STATIONS).forEach((id) => {
       const d = P.haversineKm(c, P.station(id));
-      if (!best || d < best.d) best = { name: stName(id), d };
+      if (!best || d < best.d) best = { name: STATIONS[id][0], d };
     });
-    return best.d < 2.5 ? 'Near ' + best.name : 'Around ' + c.lat.toFixed(3) + ', ' + c.lng.toFixed(3);
+    return best.d < 2.5 ? best.name : null;
   }
 
   function legText(leg) {
@@ -223,35 +236,54 @@
 
   function showCell(i) {
     selected = i;
-    const c = state.cells[i], name = areaName(c), h = hub();
+    const c = state.cells[i], h = hub(), near = nearestPlace(c);
+    const title = near ? t('cell.near', { place: I.place(near) })
+      : t('cell.around', { lat: c.lat.toFixed(3), lng: c.lng.toFixed(3) });
     const rows = state.hubs.map((hb, j) => ({ hb, j, t: state.trips[i][j] }))
       .filter((r) => (h < 0 || r.j === h));
-    const body = rows.map(({ hb, t }) => {
-      if (!t) return '<tr><td>' + M.esc(hb.name) + '</td><td colspan="3" class="muted">Too close for the metro</td></tr>';
-      const m = t.metro;
-      return '<tr><td>' + M.esc(hb.name) + '<small>' + legText(m.first) + ' · ' + M.esc(stName(m.from)) + ' → ' +
+    const body = rows.map(({ hb, t: trip }) => {
+      if (!trip) return '<tr><td>' + M.esc(I.place(hb.name)) + '</td><td colspan="3" class="muted">' + t('cell.tooClose') + '</td></tr>';
+      const m = trip.metro;
+      return '<tr><td>' + M.esc(I.place(hb.name)) + '<small>' + legText(m.first) + ' · ' + M.esc(stName(m.from)) + ' → ' +
         M.esc(stName(m.to)) + ' · ' + legText(m.last) + '</small></td>' +
-        '<td title="' + KIND_TEXT[t.kind] + '">' + KIND_ICON[t.kind] + '</td>' +
+        '<td title="' + M.esc(t('kind.' + trip.kind)) + '">' + KIND_ICON[trip.kind] + '</td>' +
         '<td>' + M.fmtMin(m.min) + '<small>' + M.fmtRs(m.cost) + '</small></td>' +
-        '<td>' + M.fmtMin(t.auto.min) + '<small>' + M.fmtRs(t.auto.cost) + '</small></td></tr>';
+        '<td>' + M.fmtMin(trip.auto.min) + '<small>' + M.fmtRs(trip.auto.cost) + '</small></td></tr>';
     }).join('');
     const box = $('#cell-info');
-    box.innerHTML = '<div class="cell-head"><h3>' + M.esc(name) + '</h3>' +
-      '<button type="button" class="link-btn" id="cell-close">Close</button></div>' +
-      '<table class="compare cell-table"><thead><tr><th>To</th><th></th><th>Metro</th><th>Auto</th></tr></thead><tbody>' +
-      body + '</tbody></table>' +
-      '<div class="rec-actions"><label class="small-label" for="cell-to">Plan a trip from here to</label>' +
-      '<select id="cell-to">' + rows.filter((r) => r.t).map((r) => '<option>' + M.esc(r.hb.name) + '</option>').join('') + '</select>' +
-      '<button type="button" class="primary small-btn" id="cell-plan">Open in trip planner</button></div>';
+    box.innerHTML = '<div class="cell-head"><h3>' + M.esc(title) + '</h3>' +
+      '<button type="button" class="link-btn" id="cell-close">' + t('cell.close') + '</button></div>' +
+      '<table class="compare cell-table"><thead><tr><th>' + t('cell.to') + '</th><th></th><th>' + t('cell.metro') +
+      '</th><th>' + t('cell.auto') + '</th></tr></thead><tbody>' + body + '</tbody></table>' +
+      '<div class="rec-actions"><label class="small-label" for="cell-to">' + t('cell.planTo') + '</label>' +
+      '<select id="cell-to">' + rows.filter((r) => r.t).map((r) =>
+        '<option value="' + M.esc(r.hb.name) + '">' + M.esc(I.place(r.hb.name)) + '</option>').join('') + '</select>' +
+      '<button type="button" class="primary small-btn" id="cell-plan">' + t('cell.open') + '</button></div>';
     box.hidden = false;
     $('#cell-close').addEventListener('click', () => { box.hidden = true; selected = null; render(); });
     const go = $('#cell-plan');
     if (!$('#cell-to').options.length) go.disabled = true;
     go.addEventListener('click', () => {
-      M.planFrom({ name: name.replace(/^(Near|Around) /, ''), lat: c.lat, lng: c.lng }, $('#cell-to').value);
+      const name = near ? I.place(near) : c.lat.toFixed(3) + ', ' + c.lng.toFixed(3);
+      M.planFrom({ name, lat: c.lat, lng: c.lng }, I.place($('#cell-to').value));
     });
     render();
-    if (window.matchMedia('(max-width: 899px)').matches) box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  /* ------------------------------------------------------------------
+   * Text that depends on the language
+   * ------------------------------------------------------------------ */
+  function translate() {
+    const sel = $('#gap-hub'), current = sel.value || '-1';
+    sel.innerHTML = '<option value="-1">' + M.esc(t('gap.allHubs', { n: HUBS.length })) + '</option>' +
+      HUBS.map((name, j) => '<option value="' + j + '">' + M.esc(I.place(name)) + '</option>').join('');
+    sel.value = current;
+    $('#feeder-note').textContent = t('gap.feedersNote', { km: CONFIG.feeder.maxKm });
+    $('#gap-hint').textContent = t('gap.hint', { km2: km2(G.cellKm2()) });
+    $('#report-note').textContent = t('rep.note', { km: CONFIG.gapMap.minTripKm });
+    $('#gap-legend').innerHTML = Object.keys(LINES).map((l) =>
+      '<span><i style="background:' + LINES[l].color + '"></i>' + I.line(l) + '</span>').join('') +
+      '<span><i class="hub-key"></i>' + t('gap.hubKey') + '</span>';
   }
 
   /* ------------------------------------------------------------------
@@ -260,25 +292,16 @@
   function start() {
     if (started) return;
     started = true;
-    const sel = $('#gap-hub');
-    sel.innerHTML = '<option value="-1">All ' + HUBS.length + ' major hubs</option>' +
-      HUBS.map((name, j) => '<option value="' + j + '">' + M.esc(name) + '</option>').join('');
-    $('#feeder-km').textContent = CONFIG.feeder.maxKm;
-    $('#cell-size').textContent = G.cellKm2().toFixed(1);
-    $('#min-trip').textContent = CONFIG.gapMap.minTripKm;
+    translate();
     $('#print-report').addEventListener('click', () => window.print());
-    $('#gap-legend').innerHTML = Object.keys(LINES).map((l) =>
-      '<span><i style="background:' + LINES[l].color + '"></i>' + LINES[l].name + '</span>').join('') +
-      '<span><i class="hub-key"></i>Hub</span>';
-
-    sel.addEventListener('change', () => {
+    $('#gap-hub').addEventListener('change', () => {
       selected = null;
       $('#cell-info').hidden = true;
       refresh();
     });
     document.querySelectorAll('input[name=gap-time]').forEach((r) => r.addEventListener('change', rebuild));
     $('#apply-all').addEventListener('click', () => {
-      recs.forEach((r) => G.setFeeder(state, r.station, true));
+      (recs || []).forEach((r) => G.setFeeder(state, r.station, true));
       render();
       renderRecs();
     });
@@ -289,11 +312,22 @@
     });
     svg.addEventListener('click', (e) => {
       const i = e.target.dataset && e.target.dataset.i;
-      if (i !== undefined) showCell(+i);
+      if (i !== undefined) {
+        showCell(+i);
+        if (window.matchMedia('(max-width: 899px)').matches) $('#cell-info').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
     });
     rebuild();
   }
 
   document.addEventListener('mm:view', (e) => { if (e.detail === 'gap') start(); });
+  document.addEventListener('mm:lang', () => {
+    if (!started) return;
+    translate();
+    render();
+    renderRecs();
+    renderReport();
+    if (selected !== null && !$('#cell-info').hidden) showCell(selected);
+  });
   if (M.view === 'gap') start();
 })();

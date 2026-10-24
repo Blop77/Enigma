@@ -6,7 +6,7 @@ Built for the Pune Metro hackathon · theme **Urban mobility**.
 
 ### ▶ [Live demo: blop77.github.io/metro-mitra](https://blop77.github.io/metro-mitra/)
 
-![Urban mobility](https://img.shields.io/badge/theme-urban%20mobility-8e3fa8) ![No build step](https://img.shields.io/badge/build-none-555) ![Tests](https://img.shields.io/badge/tests-35%20passing-2f9e5f) ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
+![Urban mobility](https://img.shields.io/badge/theme-urban%20mobility-8e3fa8) ![No build step](https://img.shields.io/badge/build-none-555) ![Tests](https://img.shields.io/badge/tests-44%20passing-2f9e5f) ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
 
 [![The Gap Map with five suggested feeders switched on](screenshot.png)](https://blop77.github.io/metro-mitra/)
 
@@ -38,9 +38,13 @@ What the model finds (peak hour, with the estimates below):
 | One feeder at Kalyani Nagar, for Magarpatta | Area where an auto is better: 34% → 10% |
 | Five suggested feeders | Area where the metro wins: **36% → 50%** |
 
+### 🌐 English / मराठी
+
+The whole app (both tabs, the city report, errors and units) switches to Marathi with one tap, and remembers the choice. Station, landmark and line names switch too, and you can search in either language. Browsers set to Marathi start in Marathi. *The Marathi was written for the hackathon. Please have a native speaker review `js/i18n.js` and the names in `js/data.js`.*
+
 ### 🧭 Trip planner (for riders)
 
-- Plan from a station, a landmark, a Marathi station name (स्वारगेट) or 📍 GPS
+- Plan from a station, a landmark, a Marathi name (स्वारगेट) or 📍 GPS
 - Door-to-door timeline with clock times: first mile → right line and direction → change at Civil Court → last mile
 - Total cost including first and last mile, and an **honest verdict**: it says *take an auto* when the metro doesn't pay off
 - Metro vs auto vs cab: time, ₹, CO₂
@@ -53,12 +57,13 @@ What the model finds (peak hour, with the estimates below):
 
 ```
 js/data.js       Network (29 stations, 2 lines), Marathi names, landmarks, 12 hubs, every tunable number
+js/i18n.js       Every user-visible string in English and Marathi; t(key, vars)
 js/planner.js    Trip engine: Dijkstra routing, fares, concessions, first/last mile, verdict (no DOM)
 js/gapmap.js     Gap Map engine: grid, scoring, feeder simulation, greedy recommendations (no DOM)
 js/app.js        Trip planner UI, tabs, savings tracker, share links
 js/gap-ui.js     Gap Map UI: heat map, feeder simulator, city report
 sw.js            Service worker for offline use
-tests/           Engine tests (Node, no dependencies)
+tests/           Engine and translation tests (Node, no dependencies)
 ```
 
 - **Routing.** One graph node per *(line, station)*, so changing lines at Civil Court costs real time (a platform walk plus half a headway). Dijkstra finds the fastest route.
@@ -94,6 +99,7 @@ No build step, nothing to install.
 npx serve .                    # GPS and offline mode need http(s), not file://
 node tests/planner.test.js     # trip engine
 node tests/gapmap.test.js      # Gap Map engine
+node tests/i18n.test.js        # every string translated, every key used exists
 ```
 
 ## Demo script (3 minutes)
@@ -108,7 +114,7 @@ node tests/gapmap.test.js      # Gap Map engine
 
 ## Working with Codex (optional)
 
-The project is complete without it. If Codex credits are available at the event, [`AGENTS.md`](AGENTS.md) gives Codex the architecture, rules and a list of ready-to-paste tasks (full Marathi UI, PMPML GTFS feeders, Line 3, crowd reports, accessibility).
+The project is complete without it. If Codex credits are available at the event, [`AGENTS.md`](AGENTS.md) gives Codex the architecture, rules and a list of ready-to-paste tasks (PMPML GTFS feeders, Line 3, crowd reports, accessibility, a shareable savings card).
 
 ## License
 

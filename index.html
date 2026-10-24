@@ -16,156 +16,158 @@
     <div class="brand">
       <span class="logo" aria-hidden="true">M</span>
       <div>
-        <h1>MetroMitra <span class="mr" lang="mr">मेट्रोमित्र</span></h1>
-        <p class="tagline">Fixing Pune Metro's last mile</p>
+        <h1 data-i18n-html="brand">MetroMitra <span class="mr" lang="mr">मेट्रोमित्र</span></h1>
+        <p class="tagline" data-i18n="tagline">Fixing Pune Metro's last mile</p>
       </div>
     </div>
-    <div id="service" class="service" role="status"></div>
+    <div class="top-right">
+      <button type="button" id="lang-toggle" class="lang-btn" data-i18n="lang.switch" data-i18n-attr="aria-label:lang.switchLabel" aria-label="मराठीत पाहा">मराठी</button>
+      <div id="service" class="service" role="status"></div>
+    </div>
   </header>
 
-  <nav class="tabs" role="tablist" aria-label="Views">
-    <button type="button" role="tab" id="tab-gap" data-view="gap" aria-controls="view-gap">🗺️ Gap Map <small>for the city</small></button>
-    <button type="button" role="tab" id="tab-plan" data-view="plan" aria-controls="view-plan">🧭 Trip planner <small>for riders</small></button>
+  <nav class="tabs" role="tablist" aria-label="Views" data-i18n-attr="aria-label:nav.label">
+    <button type="button" role="tab" id="tab-gap" data-view="gap" aria-controls="view-gap" data-i18n-html="tab.gap">🗺️ Gap Map <small>for the city</small></button>
+    <button type="button" role="tab" id="tab-plan" data-view="plan" aria-controls="view-plan" data-i18n-html="tab.plan">🧭 Trip planner <small>for riders</small></button>
   </nav>
 
   <main class="layout gap-layout" id="view-gap" role="tabpanel" aria-labelledby="tab-gap" hidden>
-    <section class="panel gap-side" aria-label="Gap Map controls">
+    <section class="panel gap-side" aria-label="Gap Map controls" data-i18n-attr="aria-label:gap.controls">
       <div class="headline">
         <p class="big"><b id="gap-pct">–</b><span id="gap-after"></span></p>
-        <p id="gap-caption" class="caption">Working out where the metro works…</p>
+        <p id="gap-caption" class="caption" data-i18n="gap.working">Working out where the metro works…</p>
         <div class="bar" id="gap-bar" aria-hidden="true"><i class="good"></i><i class="mixed"></i><i class="poor"></i></div>
         <ul class="key">
-          <li><i class="good"></i>Metro beats an auto</li>
-          <li><i class="mixed"></i>Cheaper but slower</li>
-          <li><i class="poor"></i>Auto is better</li>
+          <li><i class="good"></i><span data-i18n="gap.keyGood">Metro beats an auto</span></li>
+          <li><i class="mixed"></i><span data-i18n="gap.keyMixed">Cheaper but slower</span></li>
+          <li><i class="poor"></i><span data-i18n="gap.keyPoor">Auto is better</span></li>
         </ul>
       </div>
 
       <div class="options">
         <div class="field small">
-          <label for="gap-hub">Getting to</label>
+          <label for="gap-hub" data-i18n="gap.hub">Getting to</label>
           <select id="gap-hub"></select>
         </div>
         <fieldset class="field small">
-          <legend>Time</legend>
+          <legend data-i18n="gap.time">Time</legend>
           <div class="seg" role="radiogroup">
-            <label><input type="radio" name="gap-time" value="peak" checked><span>Peak</span></label>
-            <label><input type="radio" name="gap-time" value="off"><span>Off-peak</span></label>
+            <label><input type="radio" name="gap-time" value="peak" checked><span data-i18n="gap.peak">Peak</span></label>
+            <label><input type="radio" name="gap-time" value="off"><span data-i18n="gap.off">Off-peak</span></label>
           </div>
         </fieldset>
       </div>
 
-      <h3>Where should Pune add feeder buses?</h3>
-      <p class="note">A feeder is a ₹10 e-bus or shared e-rickshaw serving homes and offices up to
-        <span id="feeder-km"></span> km from a station. MetroMitra tests every station and picks the ones that turn the most of Pune green.</p>
-      <ol id="recs" class="recs"><li class="muted">Calculating…</li></ol>
+      <h3 data-i18n="gap.feedersTitle">Where should Pune add feeder buses?</h3>
+      <p class="note" id="feeder-note"></p>
+      <ol id="recs" class="recs"><li class="muted" data-i18n="gap.calculating">Calculating…</li></ol>
       <div class="rec-actions">
-        <button type="button" id="apply-all" class="primary small-btn">Add all suggested feeders</button>
-        <button type="button" id="reset-feeders" class="link-btn">Remove all</button>
+        <button type="button" id="apply-all" class="primary small-btn" data-i18n="gap.applyAll">Add all suggested feeders</button>
+        <button type="button" id="reset-feeders" class="link-btn" data-i18n="gap.removeAll">Remove all</button>
       </div>
-      <p class="note">Tip: tap any station on the map to add or remove a feeder there yourself.</p>
+      <p class="note" data-i18n="gap.tip">Tip: tap any station on the map to add or remove a feeder there yourself.</p>
 
       <div id="cell-info" class="cell-info" hidden></div>
     </section>
 
-    <section class="panel gap-map-panel" aria-label="Gap Map of Pune">
+    <section class="panel gap-map-panel" aria-label="Gap Map of Pune" data-i18n-attr="aria-label:gap.mapLabel">
       <div class="map-head">
-        <h2 id="gap-title">Where the metro works</h2>
+        <h2 id="gap-title" data-i18n="gap.mapTitle">Where the metro works</h2>
         <div class="legend" id="gap-legend"></div>
       </div>
-      <svg id="gap-map" role="img" aria-label="Map of Pune coloured by whether the metro beats an auto"></svg>
-      <p class="hint">Tap a square to see the trips from there. Each square is about <span id="cell-size"></span> km².</p>
+      <svg id="gap-map" role="img" aria-label="Map of Pune coloured by whether the metro beats an auto" data-i18n-attr="aria-label:gap.mapAria"></svg>
+      <p class="hint" id="gap-hint"></p>
     </section>
 
-    <section class="panel report" id="report" aria-label="City report">
+    <section class="panel report" id="report" aria-label="City report" data-i18n-attr="aria-label:rep.label">
       <div class="map-head">
-        <h2>City report: metro access to every hub</h2>
-        <button type="button" id="print-report" class="link-btn">🖨️ Print / save as PDF</button>
+        <h2 data-i18n="rep.title">City report: metro access to every hub</h2>
+        <button type="button" id="print-report" class="link-btn" data-i18n="rep.print">🖨️ Print / save as PDF</button>
       </div>
-      <p class="note" id="report-lead">Ranking hubs…</p>
+      <p class="note" id="report-lead" data-i18n="rep.ranking">Ranking hubs…</p>
       <table class="compare report-table">
-        <thead><tr><th>Hub</th><th>Metro wins</th><th>Auto better</th><th>Best single feeder</th><th>With it: wins / auto better</th></tr></thead>
+        <thead><tr><th data-i18n="rep.hub">Hub</th><th data-i18n="rep.wins">Metro wins</th><th data-i18n="rep.poor">Auto better</th><th data-i18n="rep.feeder">Best single feeder</th><th data-i18n="rep.after">With it: wins / auto better</th></tr></thead>
         <tbody id="report-body"></tbody>
       </table>
-      <p class="note">Peak/off-peak follows the Time setting above. Share of the area within reach of the metro;
-        trips shorter than <span id="min-trip"></span> km are left out.</p>
+      <p class="note" id="report-note"></p>
     </section>
   </main>
 
   <main class="layout" id="view-plan" role="tabpanel" aria-labelledby="tab-plan" hidden>
-    <section class="panel planner" aria-label="Plan a trip">
+    <section class="panel planner" aria-label="Plan a trip" data-i18n-attr="aria-label:plan.label">
       <form id="plan-form" autocomplete="off">
         <div class="field">
-          <label for="from">From</label>
+          <label for="from" data-i18n="plan.from">From</label>
           <div class="input-row">
-            <input id="from" list="places" placeholder="Station, college, landmark… (मराठीतही)" required>
-            <button type="button" id="locate" class="icon-btn" title="Use my location" aria-label="Use my location">◎</button>
+            <input id="from" list="places" placeholder="Station, college, landmark… (मराठीतही)" data-i18n-attr="placeholder:plan.fromPh" required>
+            <button type="button" id="locate" class="icon-btn" title="Use my location" aria-label="Use my location" data-i18n-attr="title:plan.locate;aria-label:plan.locate">◎</button>
           </div>
         </div>
-        <button type="button" id="swap" class="swap" title="Swap from and to" aria-label="Swap from and to">⇅</button>
+        <button type="button" id="swap" class="swap" title="Swap from and to" aria-label="Swap from and to" data-i18n-attr="title:plan.swap;aria-label:plan.swap">⇅</button>
         <div class="field">
-          <label for="to">To</label>
-          <input id="to" list="places" placeholder="Where are you going?" required>
+          <label for="to" data-i18n="plan.to">To</label>
+          <input id="to" list="places" placeholder="Where are you going?" data-i18n-attr="placeholder:plan.toPh" required>
         </div>
         <datalist id="places"></datalist>
 
         <div class="options">
           <div class="field small">
-            <label for="when">Leaving at</label>
+            <label for="when" data-i18n="plan.when">Leaving at</label>
             <input id="when" type="time">
           </div>
           <div class="field small">
-            <label for="pass">Ticket</label>
+            <label for="pass" data-i18n="plan.ticket">Ticket</label>
             <select id="pass"></select>
           </div>
           <fieldset class="field small mile">
-            <legend>First &amp; last mile</legend>
+            <legend data-i18n="plan.mile">First &amp; last mile</legend>
             <div class="seg" role="radiogroup">
-              <label><input type="radio" name="mile" value="auto" checked><span>🛺 Auto</span></label>
-              <label><input type="radio" name="mile" value="cycle"><span>🚲 Cycle</span></label>
-              <label><input type="radio" name="mile" value="walk"><span>🚶 Walk</span></label>
+              <label><input type="radio" name="mile" value="auto" checked><span data-i18n="plan.mileAuto">🛺 Auto</span></label>
+              <label><input type="radio" name="mile" value="cycle"><span data-i18n="plan.mileCycle">🚲 Cycle</span></label>
+              <label><input type="radio" name="mile" value="walk"><span data-i18n="plan.mileWalk">🚶 Walk</span></label>
             </div>
           </fieldset>
         </div>
 
-        <button type="submit" class="primary">Plan my trip</button>
+        <button type="submit" class="primary" data-i18n="plan.submit">Plan my trip</button>
         <p id="error" class="error" role="alert" hidden></p>
       </form>
 
       <div class="quick">
-        <span>Try:</span>
-        <button type="button" data-from="MIT-WPU, Kothrud" data-to="Pune Airport">MIT-WPU → Airport</button>
-        <button type="button" data-from="PCMC" data-to="Swargate">PCMC → Swargate</button>
-        <button type="button" data-from="Hinjewadi Phase 1" data-to="Koregaon Park">Hinjewadi → KP</button>
+        <span data-i18n="plan.try">Try:</span>
+        <button type="button" data-from="MIT-WPU, Kothrud" data-to="Pune Airport" data-i18n="plan.try1">MIT-WPU → Airport</button>
+        <button type="button" data-from="PCMC" data-to="Swargate" data-i18n="plan.try2">PCMC → Swargate</button>
+        <button type="button" data-from="Hinjewadi Phase 1" data-to="Koregaon Park" data-i18n="plan.try3">Hinjewadi → KP</button>
       </div>
     </section>
 
     <section id="results" class="panel results" aria-live="polite" hidden></section>
 
-    <section class="panel map-panel" aria-label="Pune Metro map">
+    <section class="panel map-panel" aria-label="Pune Metro map" data-i18n-attr="aria-label:map.label">
       <div class="map-head">
-        <h2>Network</h2>
+        <h2 data-i18n="map.title">Network</h2>
         <div class="legend" id="legend"></div>
       </div>
-      <svg id="map" role="img" aria-label="Map of Pune Metro Purple and Aqua lines"></svg>
-      <p class="hint">Tap a station to plan from it, then tap another to plan to it.</p>
+      <svg id="map" role="img" aria-label="Map of Pune Metro Purple and Aqua lines" data-i18n-attr="aria-label:map.aria"></svg>
+      <p class="hint" data-i18n="map.hint">Tap a station to plan from it, then tap another to plan to it.</p>
     </section>
 
-    <section id="savings" class="panel savings" aria-label="My metro savings">
+    <section id="savings" class="panel savings" aria-label="My metro savings" data-i18n-attr="aria-label:sav.title">
       <div class="map-head">
-        <h2>My metro savings</h2>
-        <button type="button" id="clear-trips" class="link-btn" hidden>Clear</button>
+        <h2 data-i18n="sav.title">My metro savings</h2>
+        <button type="button" id="clear-trips" class="link-btn" data-i18n="sav.clear" hidden>Clear</button>
       </div>
       <div id="savings-body"></div>
     </section>
   </main>
 
   <footer class="foot">
-    <p>Fares, timings, coordinates and road costs are <strong>estimates</strong> for planning, not official Maha-Metro data.
+    <p data-i18n-html="footer">Fares, timings, coordinates and road costs are <strong>estimates</strong> for planning, not official Maha-Metro data.
        Feeders are a simulation. Built for the Pune Metro hackathon · Urban mobility.</p>
   </footer>
 
   <script src="js/data.js"></script>
+  <script src="js/i18n.js"></script>
   <script src="js/planner.js"></script>
   <script src="js/gapmap.js"></script>
   <script src="js/app.js"></script>
