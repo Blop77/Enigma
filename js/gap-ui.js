@@ -95,16 +95,21 @@
   function renderHeadline() {
     const now = G.summary(state, hub());
     const feeders = G.feederList(state).length;
-    $('#gap-pct').textContent = Math.round(base.goodPeoplePct) + '%';
-    $('#gap-after').innerHTML = feeders
-      ? ' <span class="arrow">→</span> <b class="after">' + Math.round(now.goodPeoplePct) + '%</b>'
+    const good0 = Math.round(base.goodPeoplePct), good1 = Math.round(now.goodPeoplePct);
+    const poor0 = Math.round(base.poorPeoplePct), poor1 = Math.round(now.poorPeoplePct);
+    $('#gap-pct').textContent = good0 + '%';
+    // Only show "before → after" when the rounded share actually moves.
+    $('#gap-after').innerHTML = feeders && good1 !== good0
+      ? ' <span class="arrow">→</span> <b class="after">' + good1 + '%</b>'
       : '';
+    // A feeder can help without moving the green share: trips that turn from
+    // red to amber get cheaper than an auto but not yet faster.
+    const feederKey = good1 !== good0 ? 'gap.withFeeders' : poor1 !== poor0 ? 'gap.withFeedersPoor' : 'gap.withFeedersSmall';
     const residents = people(base.people.rated);
     $('#gap-caption').innerHTML = (hub() < 0
       ? t('gap.caption.all', { people: residents, n: HUBS.length, when: when() })
       : t('gap.caption.hub', { people: residents, hub: M.esc(I.place(HUBS[hub()])), when: when() })) +
-      (feeders ? t('gap.withFeeders', { n: feeders, good: Math.round(now.goodPeoplePct),
-        poor0: Math.round(base.poorPeoplePct), poor1: Math.round(now.poorPeoplePct) }) : '') +
+      (feeders ? t(feederKey, { n: feeders, good: good1, poor0, poor1 }) : '') +
       t('gap.byArea', { pct: Math.round(now.goodPct) });
     const delta = $('#gap-planned-delta');
     if (comparison) {
