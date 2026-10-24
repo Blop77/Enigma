@@ -27,9 +27,9 @@
   /* ------------------------------------------------------------------
    * Places
    * ------------------------------------------------------------------ */
-  function hubPlace(name) {
+  function hubPlace(name, opts) {
     for (var i = 0; i < IDS.length; i++) {
-      if (STATIONS[IDS[i]][0] === name) {
+      if (P.linesAt(IDS[i], opts).length && STATIONS[IDS[i]][0] === name) {
         var s = P.station(IDS[i]);
         return { name: name, lat: s.lat, lng: s.lng, stationId: s.id };
       }
@@ -42,17 +42,19 @@
 
   // Candidate stations around a place: the place itself if it is a station,
   // otherwise its 3 nearest (same rule as the trip planner).
-  function near(place) {
-    return place.stationId ? [{ id: place.stationId, km: 0 }] : P.nearestStations(place, 3);
+  function near(place, opts) {
+    if (place.stationId) return P.linesAt(place.stationId, opts).length ? [{ id: place.stationId, km: 0 }] : [];
+    return P.nearestStations(place, 3, opts);
   }
 
-  function grid() {
+  function grid(opts) {
     var g = CONFIG.gapMap, cells = [];
+    opts = opts || {};
     var rows = Math.round((g.maxLat - g.minLat) / g.step), cols = Math.round((g.maxLng - g.minLng) / g.step);
     for (var r = 0; r < rows; r++) {
       for (var c = 0; c < cols; c++) {
         var cell = { row: r, col: c, lat: g.maxLat - (r + 0.5) * g.step, lng: g.minLng + (c + 0.5) * g.step };
-        cell.near = near(cell);
+        cell.near = near(cell, opts);
         if (cell.near[0].km <= g.maxStationKm) cells.push(cell);
       }
     }
@@ -69,18 +71,19 @@
    * Metro times between every pair of stations, computed once per headway.
    * ------------------------------------------------------------------ */
   var tables = {};
-  function metroTable(headway) {
-    if (tables[headway]) return tables[headway];
+  function metroTable(headway, planned, ids) {
+    var key = headway + ':' + (planned ? 'planned' : 'open');
+    if (tables[key]) return tables[key];
     var t = {};
-    IDS.forEach(function (a) {
+    ids.forEach(function (a) {
       t[a] = {};
-      IDS.forEach(function (b) {
+      ids.forEach(function (b) {
         if (a === b) return;
-        var r = P.route(a, b, { headwayMin: headway });
+        var r = P.route(a, b, { headwayMin: headway, planned: planned });
         t[a][b] = { min: r.rideMin + r.transfers * (CONFIG.transferMin + headway / 2), fare: r.fare, km: r.km };
       });
     });
-    tables[headway] = t;
+    tables[key] = t;
     return t;
   }
 
@@ -137,25 +140,34 @@
 
   /* ------------------------------------------------------------------
    * The whole map
-   * opts: { peak: true|false, feeders: [stationId...] }
+   * opts: { peak: true|false, planned: true|false, feeders: [stationId...] }
    * ------------------------------------------------------------------ */
   function build(opts) {
     opts = opts || {};
     var peak = opts.peak !== false;
+    var planned = !!opts.planned;
     var headway = peak ? CONFIG.peakHeadwayMin : CONFIG.offPeakHeadwayMin;
-    var hubs = Data.HUBS.map(function (name) { var h = hubPlace(name); h.near = near(h); return h; });
+    var ids = IDS.filter(function (id) { return P.linesAt(id, { planned: planned }).length > 0; });
+    var hubs = Data.HUBS.map(function (name) {
+      var h = hubPlace(name, { planned: planned });
+      h.near = near(h, { planned: planned });
+      return h;
+    });
     var state = {
-      cells: grid(),
+      cells: grid({ planned: planned }),
+      stationIds: ids,
       hubs: hubs,
-      ctx: { peak: peak, headway: headway, table: metroTable(headway), feeders: {} },
+      ctx: { peak: peak, planned: planned, headway: headway, table: metroTable(headway, planned, ids), feeders: {} },
       trips: null
     };
-    (opts.feeders || []).forEach(function (id) { state.ctx.feeders[id] = true; });
+    (opts.feeders || []).forEach(function (id) {
+      if (state.stationIds.indexOf(id) !== -1) state.ctx.feeders[id] = true;
+    });
 
     // Which (cell, hub) pairs a feeder at a station can change.
     state.cellsByStation = {};
     state.hubsByStation = {};
-    IDS.forEach(function (id) { state.cellsByStation[id] = []; state.hubsByStation[id] = []; });
+    ids.forEach(function (id) { state.cellsByStation[id] = []; state.hubsByStation[id] = []; });
     state.cells.forEach(function (c, i) { c.near.forEach(function (n) { state.cellsByStation[n.id].push(i); }); });
     hubs.forEach(function (h, j) { h.near.forEach(function (n) { state.hubsByStation[n.id].push(j); }); });
 
@@ -194,6 +206,7 @@
   // Every (cell, hub) pair whose trip could use this station.
   function affected(state, id, hub) {
     var pairs = {}, list = [];
+    if (!state.cellsByStation[id]) return list;
     function add(i, j) { var k = i + ':' + j; if (!pairs[k]) { pairs[k] = true; list.push([i, j]); } }
     var hubIdx = hub >= 0 ? [hub] : state.hubs.map(function (h, j) { return j; });
     state.cellsByStation[id].forEach(function (i) { hubIdx.forEach(function (j) { add(i, j); }); });
@@ -212,6 +225,7 @@
   }
 
   function setFeeder(state, id, on) {
+    if (!state.cellsByStation[id]) return;
     if (on) state.ctx.feeders[id] = true; else delete state.ctx.feeders[id];
     affected(state, id, -1).forEach(function (p) {
       state.trips[p[0]][p[1]] = trip(state.cells[p[0]], state.hubs[p[1]], state.ctx);
@@ -229,7 +243,7 @@
     var start = feederList(state), picks = [];
     for (var round = 0; round < k; round++) {
       var best = null;
-      IDS.forEach(function (id) {
+      state.stationIds.forEach(function (id) {
         if (state.ctx.feeders[id]) return;
         state.ctx.feeders[id] = true;
         var gain = 0;

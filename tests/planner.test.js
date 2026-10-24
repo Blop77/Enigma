@@ -10,6 +10,12 @@ function test(name, fn) {
   catch (e) { console.error('  ✘ ' + name + '\n    ' + e.message); process.exitCode = 1; }
 }
 const at = (h, m) => new Date(2026, 9, 23, h, m || 0);
+function openStationIds() {
+  const ids = new Set();
+  Object.values(LINES).filter(line => line.status === 'open')
+    .forEach(line => line.stations.forEach(id => ids.add(id)));
+  return Array.from(ids);
+}
 
 console.log('MetroMitra planner tests');
 
@@ -27,6 +33,45 @@ test('Every station has a Marathi name', () => {
 test('District Court (Civil Court) is the interchange between Purple and Aqua', () => {
   assert.deepStrictEqual(P.linesAt('civil-court').sort(), ['aqua', 'purple']);
   assert.deepStrictEqual(P.linesAt('swargate'), ['purple']);
+});
+
+test('Planned Line 3 is excluded by default and available when requested', () => {
+  assert.strictEqual(P.route('hinjewadi', 'civil-court'), null);
+  assert.ok(P.route('pcmc', 'ramwadi').legs.every(leg => leg.line !== 'line3'));
+  assert.strictEqual(P.planTrip({ stationId: 'hinjewadi' }, { stationId: 'civil-court' }, { date: at(9) }).best, null);
+  const near = P.nearestStations({ lat: STATIONS.hinjewadi[1], lng: STATIONS.hinjewadi[2] }, 100);
+  assert.ok(!near.some(s => s.id === 'hinjewadi'));
+  assert.ok(P.nearestStations({ lat: STATIONS.hinjewadi[1], lng: STATIONS.hinjewadi[2] }, { planned: true })
+    .some(s => s.id === 'hinjewadi'));
+  LINES.line3.stations.forEach(id => {
+    if (!openStationIds().includes(id)) assert.strictEqual(STATION_CODES[id], undefined, id + ' has no Maha-Metro fare code');
+  });
+});
+
+test('Line 3 reaches District Court directly and transfers to Aqua at District Court', () => {
+  const direct = P.route('hinjewadi', 'civil-court', { planned: true });
+  assert.strictEqual(direct.legs.length, 1);
+  assert.strictEqual(direct.legs[0].line, 'line3');
+  assert.strictEqual(direct.transfers, 0);
+  const onward = P.route('hinjewadi', 'ramwadi', { planned: true });
+  assert.deepStrictEqual(onward.legs.map(leg => leg.line), ['line3', 'aqua']);
+  assert.strictEqual(onward.legs[0].stations[onward.legs[0].stations.length - 1], 'civil-court');
+  assert.strictEqual(onward.legs[1].stations[0], 'civil-court');
+});
+
+test('Mixed-operator fares charge Line 3 slabs plus the Maha-Metro chart fare', () => {
+  const r = P.route('hinjewadi', 'ramwadi', { planned: true });
+  const line3 = r.legs.find(leg => leg.line === 'line3');
+  assert.strictEqual(r.fare, P.metroFare(line3.km) + P.chartFare('civil-court', 'ramwadi'));
+  const trip = P.planTrip({ stationId: 'hinjewadi' }, { stationId: 'ramwadi' },
+                          { date: at(9), planned: true, pass: 'student' });
+  assert.strictEqual(trip.best.ticket.base, r.fare);
+});
+
+test('Line 3 station gaps and end-to-end time match its planned data', () => {
+  const r = P.route('megapolis-circle', 'civil-court', { planned: true });
+  assert.ok(Math.abs(r.km - LINES.line3.lengthKm) < 1e-9);
+  assert.ok(Math.abs(r.rideMin - LINES.line3.runMin) < 1e-9);
 });
 
 test('Line lengths add up to the published route length', () => {
@@ -95,7 +140,7 @@ test('Fare chart covers every station and is consistent', () => {
     assert.strictEqual(row[i], 0);
     row.forEach((v, j) => { if (i !== j) assert.ok([10, 15, 20, 25, 30, 35].includes(v), FARE_CODES[i] + '>' + FARE_CODES[j]); });
   });
-  Object.keys(STATIONS).forEach((id) => assert.ok(FARE_CODES.includes(STATION_CODES[id]), id + ' has no fare code'));
+  openStationIds().forEach((id) => assert.ok(FARE_CODES.includes(STATION_CODES[id]), id + ' has no fare code'));
   assert.strictEqual(new Set(Object.values(STATION_CODES)).size, FARE_CODES.length);
   // Only the pairs listed in FARE_ASYMMETRIC may differ by direction.
   const asym = [];
@@ -104,7 +149,7 @@ test('Fare chart covers every station and is consistent', () => {
 });
 
 test('Every station pair uses a chart fare', () => {
-  const ids = Object.keys(STATIONS);
+  const ids = openStationIds();
   ids.forEach(a => ids.forEach(b => {
     if (a !== b) assert.strictEqual(P.route(a, b).fare, P.chartFare(a, b), a + ' → ' + b);
   }));
@@ -249,7 +294,7 @@ test('Trip after last train is flagged closed', () => {
 });
 
 test('Every station pair has a route', () => {
-  const ids = Object.keys(STATIONS);
+  const ids = openStationIds();
   ids.forEach(a => ids.forEach(b => { if (a !== b) assert.ok(P.route(a, b), a + ' → ' + b); }));
 });
 

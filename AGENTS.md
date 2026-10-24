@@ -12,8 +12,10 @@ It is plain HTML, CSS and JavaScript with **no build step and no dependencies**,
 |---|---|---|
 | `js/data.js` | Stations, lines, Marathi names, landmarks, hubs, `CONFIG` (fares, speeds, tariffs, feeder model, grid) | **Every number lives here.** Never hard-code fares, speeds or coordinates elsewhere. |
 | `js/planner.js` | Trip engine: routing, fares, concessions, first/last mile, verdict | No DOM. UMD: works in Node and the browser. |
+| `js/savings.js` | Month filtering and totals for the savings tracker | No DOM. UMD: works in Node and the browser. |
 | `js/gapmap.js` | Gap Map engine: grid, scoring, feeders, recommendations | No DOM. Must stay consistent with `planner.js` (a test checks this). |
 | `js/app.js` | Trip planner UI, tabs, savings tracker; exposes `window.MetroMitra` | Browser only. |
+| `js/savings-card.js` | Draws and exports the shareable savings card | Browser only; canvas UI. |
 | `js/gap-ui.js` | Gap Map UI, feeder simulator, city report | Browser only. |
 | `js/i18n.js` | Every user-visible string as `[English, Marathi]`; `I18N.t(key, vars)`, `I18N.station/place/line` for names | **No string literals for users anywhere else.** Add both languages for every new key. |
 | `css/style.css` | All styles; colour tokens on `:root` with a dark-mode override | Mobile first, two columns from 900px. |
@@ -25,6 +27,7 @@ It is plain HTML, CSS and JavaScript with **no build step and no dependencies**,
 node tests/planner.test.js     # must pass
 node tests/gapmap.test.js      # must pass
 node tests/i18n.test.js        # must pass: catches missing keys and untranslated strings
+node tests/savings.test.js     # savings totals and month filtering
 npx serve .                    # then open http://localhost:3000
 ```
 
@@ -44,7 +47,7 @@ npx serve .                    # then open http://localhost:3000
 - Escape anything user-visible that comes from data with `MetroMitra.esc` before putting it in `innerHTML`.
 - User-visible text goes through `I18N.t('key', vars)` (static HTML uses `data-i18n`, `data-i18n-html`, `data-i18n-attr`). Marathi templates must not attach case endings to a `{place}`; use forms like `{place} येथे`. When the language changes, `mm:lang` fires; re-render anything you draw.
 - Keep the page free of horizontal scroll at 390px wide and check dark mode.
-- Fares, timings and coordinates are **estimates**. Do not present them as official; keep the footer disclaimer.
+- Line 3's run time and coordinates, plus road fares, emissions and feeder assumptions, are **estimates**. Do not present estimates as official; keep the footer disclaimer.
 - Add a test for every engine change. Never weaken or delete an existing test to make a change pass.
 
 ## Ready-to-run tasks
@@ -52,11 +55,9 @@ npx serve .                    # then open http://localhost:3000
 Each task is self-contained. Paste one as a prompt.
 
 1. **PMPML feeder buses from GTFS.** Load PMPML stops (GTFS `stops.txt`, converted to a small JSON file in `data/`) and treat any bus stop within 400 m of a metro station as an existing feeder in the Gap Map, so the map shows today's reality and the simulator only suggests new feeders.
-2. **Line 3 (Hinjewadi–Shivajinagar).** Add Line 3 to `LINES` with its stations and coordinates, marked `status: 'planned'`. Add a Gap Map toggle "Include Line 3" that rebuilds with it, and show the Hinjewadi headline before and after.
-3. **Crowd and lift reports.** Let riders report "crowded / lift not working / escalator not working" at a station. Store reports in `localStorage` for the demo, show them as icons on the planner map, and warn in the timeline when a step uses an affected station.
-4. **Accessibility mode.** A toggle that avoids stations flagged without lifts (add a `lift` flag in `data.js`), uses larger text, and adds 3 min per interchange.
-5. **Shareable savings card.** Render the "My metro savings" totals into a 1080×1080 canvas image the rider can download or share.
+2. **Crowd and lift reports.** Let riders report "crowded / lift not working / escalator not working" at a station. Store reports in `localStorage` for the demo, show them as icons on the planner map, and warn in the timeline when a step uses an affected station.
+3. **Accessibility mode.** A toggle that avoids stations flagged without lifts (add a `lift` flag in `data.js`), uses larger text, and adds 3 min per interchange.
 
 ## Definition of done
 
-All three test files pass, the page loads with no console errors on desktop and at 390px, dark mode looks right, the offline cache is updated if files changed, every new string exists in English and Marathi, and the README mentions the new feature.
+All four test files pass, the page loads with no console errors on desktop and at 390px, dark mode looks right, the offline cache is updated if files changed, every new string exists in English and Marathi, and the README mentions the new feature.

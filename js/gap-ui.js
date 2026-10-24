@@ -16,14 +16,17 @@
 
   let state = null;          // GapMap.build() result for the current time, with the chosen feeders
   let bare = null;           // the same grid with no feeders (recommend() leaves it unchanged)
+  let comparison = null;     // open-lines-only baseline while Line 3 is included
   let base = null;           // summary of bare, for "before → after"
   let recs = null;           // suggested feeders for the current hub and time (null while calculating)
   let reportRows = null;     // city report rows, kept so a language switch needn't recompute
   let selected = null;       // index of the tapped cell
   let started = false;
+  const chosenFeeders = new Set();
 
   const hub = () => +$('#gap-hub').value;               // -1 = all hubs
   const peak = () => document.querySelector('input[name=gap-time]:checked').value === 'peak';
+  const includePlanned = () => $('#include-line3').checked;
   const stName = (id) => I.station(id);
   const when = () => t(peak() ? 'gap.when.peak' : 'gap.when.off');
   const km2 = (n) => n.toFixed(1);
@@ -33,9 +36,11 @@
    * ------------------------------------------------------------------ */
   // Time changed (or first load): rebuild the grid, keeping the chosen feeders.
   function rebuild() {
-    const feeders = state ? G.feederList(state) : [];
-    bare = G.build({ peak: peak() });
-    state = G.build({ peak: peak(), feeders });
+    const planned = includePlanned(), option = { planned };
+    const feeders = Array.from(chosenFeeders).filter((id) => P.linesAt(id, option).length > 0);
+    bare = G.build({ peak: peak(), planned });
+    comparison = planned ? G.build({ peak: peak(), planned: false }) : null;
+    state = G.build({ peak: peak(), planned, feeders });
     refresh();
     setTimeout(buildReport, 60);
   }
@@ -69,6 +74,18 @@
       : t('gap.caption.hub', { hub: M.esc(I.place(HUBS[hub()])), when: when() })) +
       (feeders ? t('gap.withFeeders', { n: feeders, good: Math.round(now.goodPct),
         poor0: Math.round(base.poorPct), poor1: Math.round(now.poorPct) }) : '');
+    const delta = $('#gap-planned-delta');
+    if (comparison) {
+      const without = G.summary(comparison, hub()).goodPct;
+      const key = hub() < 0 ? 'gap.line3Change.all' : 'gap.line3Change.hub';
+      const vars = { before: Math.round(without), after: Math.round(base.goodPct) };
+      if (hub() >= 0) vars.hub = M.esc(I.place(HUBS[hub()]));
+      delta.innerHTML = t(key, vars);
+      delta.hidden = false;
+    } else {
+      delta.textContent = '';
+      delta.hidden = true;
+    }
     const bar = $('#gap-bar').children;
     bar[0].style.width = now.goodPct + '%';
     bar[1].style.width = now.mixedPct + '%';
@@ -92,6 +109,7 @@
   }
 
   function toggleFeeder(id, on) {
+    if (on) chosenFeeders.add(id); else chosenFeeders.delete(id);
     G.setFeeder(state, id, on);
     render();
     renderRecs();
@@ -134,13 +152,14 @@
     });
 
     Object.keys(LINES).forEach((line) => {
-      el('polyline', { class: 'track', stroke: LINES[line].color,
+      const plannedOnly = LINES[line].status === 'planned' && !includePlanned();
+      el('polyline', { class: 'track' + (plannedOnly ? ' planned-track' : ''), stroke: LINES[line].color,
         points: LINES[line].stations.map((id) => sxy(id).join(',')).join(' ') }, svg);
     });
 
     const feeders = new Set(G.feederList(state));
-    Object.keys(STATIONS).forEach((id) => {
-      const [x, y] = sxy(id), lines = P.linesAt(id), on = feeders.has(id);
+    state.stationIds.forEach((id) => {
+      const [x, y] = sxy(id), lines = P.linesAt(id, { planned: includePlanned() }), on = feeders.has(id);
       const other = I.lang === 'mr' ? STATIONS[id][0] : STATIONS_MR[id];
       const c = el('circle', { cx: x, cy: y, r: on ? 7 : 4.5,
         class: 'stn' + (on ? ' feeder' : ''), stroke: LINES[lines[0]].color,
@@ -221,7 +240,7 @@
       const d = P.haversineKm(c, { lat, lng });
       if (!best || d < best.d) best = { name, d };
     });
-    Object.keys(STATIONS).forEach((id) => {
+    state.stationIds.forEach((id) => {
       const d = P.haversineKm(c, P.station(id));
       if (!best || d < best.d) best = { name: STATIONS[id][0], d };
     });
@@ -300,13 +319,15 @@
       refresh();
     });
     document.querySelectorAll('input[name=gap-time]').forEach((r) => r.addEventListener('change', rebuild));
+    $('#include-line3').addEventListener('change', rebuild);
     $('#apply-all').addEventListener('click', () => {
-      (recs || []).forEach((r) => G.setFeeder(state, r.station, true));
+      (recs || []).forEach((r) => { G.setFeeder(state, r.station, true); chosenFeeders.add(r.station); });
       render();
       renderRecs();
     });
     $('#reset-feeders').addEventListener('click', () => {
       G.feederList(state).forEach((id) => G.setFeeder(state, id, false));
+      chosenFeeders.clear();
       render();
       renderRecs();
     });
