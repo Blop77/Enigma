@@ -34,7 +34,7 @@ npx serve .                    # then open http://localhost:3000
 - **Running times** come from each line's `runMin` (official end-to-end time) and `lengthKm`; the planner derives each line's speed from them. A new line needs both.
 - **Timetable** (w.e.f. 15 Aug 2025): 06:00–23:00; every 6 min at peak (08:00–11:00, 16:00–20:00), every 10 min otherwise.
 - **Stations**: Range Hill is built but not open, so it is not a stop. The interchange's id is `civil-court`; its official name is **District Court** (Civil Court is a search alias in `STATION_ALIASES`).
-- **Auto fares** use the Pune RTA meter tariff (`CONFIG.auto`, night surcharge included). Road distance, road speeds and cab fares are calibrated on `CALIBRATION_TRIPS`; a test keeps the model within 5–10% of them, so change those numbers together.
+- **Auto fares** use the Pune RTA meter tariff (`CONFIG.auto`, night surcharge included). Road distance, road speeds and cab fares are calibrated on `CALIBRATION_TRIPS`; a test keeps the model within 10% of every collected range, so change those numbers together.
 - Coordinates, CO₂ and the feeder model are still estimates.
 
 ## Conventions

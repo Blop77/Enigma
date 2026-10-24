@@ -243,11 +243,11 @@
     stationEntryMin: 2.5,    // gate to platform at elevated stations: 2–3 min (team, Vanaz)
 
     // Roads. Straight-line distance is multiplied by this to estimate road distance.
-    roadFactor: 1.37,        // fitted to CALIBRATION_TRIPS (1.38 and 1.35)
+    roadFactor: 1.39,        // fitted to CALIBRATION_TRIPS (1.32–1.48)
     walkKmh: 4.5,
     cycleKmh: 13,
-    roadKmhOffPeak: 21.4,    // 25 km in 70 min at 2 PM (CALIBRATION_TRIPS)
-    roadKmhPeak: 13.6,       // 25 km in 110 min at 9 AM (CALIBRATION_TRIPS)
+    roadKmhOffPeak: 24.1,    // 2 PM, fitted to CALIBRATION_TRIPS (21–27 km/h)
+    roadKmhPeak: 14.6,       // 9 AM, fitted to CALIBRATION_TRIPS (13–16 km/h)
 
     // First/last mile: walk anything shorter than this (km of road).
     maxWalkKm: 1.0,
@@ -258,8 +258,9 @@
     // using the meter rate keeps the metro's savings conservative.
     auto: { baseFare: 26, baseKm: 1.5, perKm: 17.14, waitMin: 4,       // wait near Vanaz: 3–5 min (team)
             night: { pct: 25, from: '00:00', to: '05:00' } },
-    // Cab (Uber Go / Ola Mini): fitted to the team's quotes in CALIBRATION_TRIPS.
-    cab:  { baseFare: 40, perKm: 25, waitMin: 6 },
+    // Cab (Uber Go / Ola Mini): off-peak fare fitted to CALIBRATION_TRIPS; at peak
+    // hours app prices surge by about this factor (1.38–1.59 on those trips).
+    cab:  { baseFare: 35, perKm: 22.5, waitMin: 6, peakSurge: 1.5 },
 
     // Grams of CO2 per passenger-km.
     co2: { metro: 15, auto: 70, cab: 150, walk: 0, cycle: 0, feeder: 40 },
@@ -277,12 +278,20 @@
     bounds: { minLat: 18.40, maxLat: 18.72, minLng: 73.68, maxLng: 74.02 }
   };
 
-  // Real trips collected by the team (Oct 2026) that the road model is calibrated on.
-  // from/to are LANDMARKS / station names; km is road distance; auto is the meter
-  // fare, cab an Uber Go / Ola Mini median; peakMin/offMin are car times at 9 AM / 2 PM.
+  // Trips the team collected (Oct 2026) that the road model is calibrated on, as
+  // [low, high] ranges (summaries of app and meter prices, not single app
+  // screenshots, so treat them as indicative). The model is fitted to the midpoints.
+  // km: road distance; auto: RTO meter fare; cab / cabPeak: Uber Go / Ola Mini at
+  // 2 PM / 9 AM; peakMin / offMin: car time at 9 AM / 2 PM.
   var CALIBRATION_TRIPS = [
-    { from: 'MIT-WPU, Kothrud', to: 'Pune Airport', km: 16.5, auto: 285, cab: 450, peakMin: 70, offMin: 45 },
-    { from: 'MIT-WPU, Kothrud', to: 'Pune Railway Station', km: 8.5, auto: 145, cab: 250, peakMin: 40, offMin: 25 }
+    { from: 'MIT-WPU, Kothrud', to: 'Pune Airport', km: [16.5, 17], auto: [285, 330],
+      cab: [420, 470], cabPeak: [550, 680], peakMin: [65, 75], offMin: [40, 45] },
+    { from: 'MIT-WPU, Kothrud', to: 'Pune Railway Station', km: [8.5, 9], auto: [145, 175],
+      cab: [210, 260], cabPeak: [320, 420], peakMin: [35, 45], offMin: [22, 28] },
+    { from: 'Hinjewadi Phase 1', to: 'Shivaji Nagar', km: [17, 18.5], auto: [295, 350],
+      cab: [380, 440], cabPeak: [550, 750], peakMin: [60, 75], offMin: [35, 45] },
+    { from: 'Kharadi (EON IT Park)', to: 'Pune Railway Station', km: [11.5, 12.5], auto: [200, 245],
+      cab: [260, 330], cabPeak: [380, 490], peakMin: [45, 55], offMin: [25, 35] }
   ];
 
   // Where Pune travels to every day: jobs, colleges, transport hubs. Names refer

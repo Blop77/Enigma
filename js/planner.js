@@ -263,7 +263,7 @@
     return {
       mode: kind, km: km,
       min: t.waitMin + km / speed * 60,
-      cost: kind === 'auto' ? autoFare(km, date) : cabFare(km),
+      cost: kind === 'auto' ? autoFare(km, date) : Math.round(cabFare(km) * (peak ? CONFIG.cab.peakSurge : 1)),
       co2: km * CONFIG.co2[kind]
     };
   }

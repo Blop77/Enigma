@@ -159,23 +159,33 @@ test('Auto night surcharge: +25% from midnight to 5 AM only', () => {
   assert.strictEqual(P.autoFare(10, at(5)), day, 'surcharge ends at 5 AM');
 });
 
-test('Road model reproduces the team\'s real trips', () => {
+test('Road model reproduces the team\'s collected trips', () => {
   const where = (name) => {
     const l = LANDMARKS.find((x) => x[0] === name);
     if (l) return { lat: l[1], lng: l[2] };
     const id = Object.keys(STATIONS).find((k) => STATIONS[k][0] === name);
     return { lat: STATIONS[id][1], lng: STATIONS[id][2] };
   };
-  const near = (got, want, tol, what) => assert.ok(Math.abs(got - want) / want <= tol, what + ': ' + got.toFixed(1) + ' vs ' + want);
+  // Each value must land inside the collected [low, high] range, widened by 10%.
+  const within = (got, [lo, hi], what) =>
+    assert.ok(got >= lo * 0.9 && got <= hi * 1.1, what + ': ' + got.toFixed(1) + ' not in ' + lo + '–' + hi);
+  assert.ok(CALIBRATION_TRIPS.length >= 4);
   CALIBRATION_TRIPS.forEach((trip) => {
     const label = trip.from + ' → ' + trip.to;
     const km = P.roadKm(where(trip.from), where(trip.to));
-    near(km, trip.km, 0.05, label + ' km');
-    near(P.autoFare(km), trip.auto, 0.05, label + ' auto ₹');
-    near(P.cabFare(km), trip.cab, 0.05, label + ' cab ₹');
-    near(km / CONFIG.roadKmhPeak * 60, trip.peakMin, 0.1, label + ' 9 AM min');
-    near(km / CONFIG.roadKmhOffPeak * 60, trip.offMin, 0.1, label + ' 2 PM min');
+    within(km, trip.km, label + ' km');
+    within(P.autoFare(km), trip.auto, label + ' auto ₹');
+    within(P.directRoad('cab', km, false).cost, trip.cab, label + ' cab ₹ at 2 PM');
+    within(P.directRoad('cab', km, true).cost, trip.cabPeak, label + ' cab ₹ at 9 AM');
+    within(km / CONFIG.roadKmhPeak * 60, trip.peakMin, label + ' 9 AM min');
+    within(km / CONFIG.roadKmhOffPeak * 60, trip.offMin, label + ' 2 PM min');
   });
+});
+
+test('Cabs surge at peak hours, autos stay on the meter', () => {
+  assert.strictEqual(P.directRoad('cab', 10, true).cost, Math.round(P.cabFare(10) * CONFIG.cab.peakSurge));
+  assert.strictEqual(P.directRoad('cab', 10, false).cost, P.cabFare(10));
+  assert.strictEqual(P.directRoad('auto', 10, true).cost, P.directRoad('auto', 10, false).cost);
 });
 
 test('Peak hours and service window', () => {
