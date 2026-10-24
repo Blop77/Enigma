@@ -308,10 +308,17 @@
     var kind;
     if (service.closed) kind = 'closed';
     else if (service.startsInMin > 15) kind = 'notyet';
-    else if (saveMin >= -5 && saveRs > 0) kind = 'metro';
-    else if (saveRs > 0) kind = 'tradeoff';
-    else kind = 'road';
+    else kind = metroKind(metro, auto);
     return { kind: kind, saveRs: saveRs, saveMin: saveMin, co2SavedG: co2Saved };
+  }
+
+  // 'metro': cheaper and at most 5 min slower than an auto; 'tradeoff': cheaper
+  // but slower; 'road': the auto is cheaper. Shared with the Gap Map.
+  function metroKind(metro, auto) {
+    var saveRs = auto.cost - metro.cost, saveMin = auto.min - metro.min;
+    if (saveMin >= -5 && saveRs > 0) return 'metro';
+    if (saveRs > 0) return 'tradeoff';
+    return 'road';
   }
 
   /* ------------------------------------------------------------------
@@ -333,6 +340,8 @@
     route: route,
     nearestStations: nearestStations,
     mileLeg: mileLeg,
+    directRoad: directRoad,
+    metroKind: metroKind,
     planTrip: planTrip
   };
 

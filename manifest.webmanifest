@@ -1,7 +1,7 @@
 {
   "name": "MetroMitra · Pune Metro planner",
   "short_name": "MetroMitra",
-  "description": "Door-to-door Pune Metro journey planner: route, fare, first and last mile, and an honest comparison with an auto.",
+  "description": "See where Pune Metro beats an auto, simulate feeder buses that fix the last mile, and plan any trip door to door.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

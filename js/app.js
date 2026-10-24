@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const { STATIONS, LINES, LANDMARKS, CONFIG } = MetroData;
+  const { STATIONS, STATIONS_MR, LINES, LANDMARKS, CONFIG } = MetroData;
   const P = MetroPlanner;
   const STORE_KEY = 'metromitra-v1';
   const MY_LOCATION = '📍 My location';
@@ -27,6 +27,8 @@
   Object.keys(STATIONS).forEach((id) => {
     const lines = P.linesAt(id).map((l) => LINES[l].name).join(' + ');
     PLACES.push({ label: STATIONS[id][0], hint: 'Metro · ' + lines, place: { stationId: id } });
+    // Marathi name as a second way to find the same station.
+    if (STATIONS_MR[id]) PLACES.push({ label: STATIONS_MR[id], hint: STATIONS[id][0] + ' · मेट्रो', place: { stationId: id } });
   });
   LANDMARKS.forEach(([name, lat, lng]) => {
     PLACES.push({ label: name, hint: 'Place', place: { name, lat, lng } });
@@ -42,10 +44,17 @@
     });
   }
 
+  // A point picked on the Gap Map is written as "📍 Near X · lat, lng" so it
+  // survives in a share link.
+  const POINT_RE = /^📍 (.+) · (-?\d+\.\d+), (-?\d+\.\d+)$/;
+  function pointLabel(p) { return '📍 ' + p.name + ' · ' + p.lat.toFixed(4) + ', ' + p.lng.toFixed(4); }
+
   function resolve(text) {
     const q = text.trim().toLowerCase();
     if (!q) return null;
     if (text.trim() === MY_LOCATION && myLocation) return { name: 'My location', lat: myLocation.lat, lng: myLocation.lng };
+    const pt = text.trim().match(POINT_RE);
+    if (pt) return { name: pt[1], lat: +pt[2], lng: +pt[3] };
     const exact = PLACES.find((p) => p.label.toLowerCase() === q);
     if (exact) return exact.place;
     const partial = PLACES.filter((p) => p.label.toLowerCase().includes(q));
@@ -280,7 +289,7 @@
       const c = el('circle', { cx: x, cy: y, r: xchg ? 8 : 6,
         class: 'stn' + (xchg ? ' xchg' : '') + (selected.has(id) ? ' sel' : ''),
         stroke: LINES[lines[0]].color, tabindex: 0, role: 'button', 'aria-label': stName(id) }, mapEl);
-      el('title', {}, c).textContent = stName(id);
+      el('title', {}, c).textContent = stName(id) + (STATIONS_MR[id] ? ' · ' + STATIONS_MR[id] : '');
       c.addEventListener('click', () => pickStation(id));
       c.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pickStation(id); } });
 
@@ -466,6 +475,29 @@
   }
 
   /* ------------------------------------------------------------------
+   * Views: Gap Map (for the city) and Trip planner (for riders)
+   * ------------------------------------------------------------------ */
+  let view = null;
+  function showView(name) {
+    view = name;
+    document.querySelectorAll('.tabs [data-view]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.view === name)));
+    $('#view-gap').hidden = name !== 'gap';
+    $('#view-plan').hidden = name !== 'plan';
+    if (name === 'gap') history.replaceState(null, '', '#view=gap');
+    else if (resultsEl.hidden) history.replaceState(null, '', '#view=plan');
+    else if (fromIn.value !== MY_LOCATION) history.replaceState(null, '', '#' + hashFor());
+    document.dispatchEvent(new CustomEvent('mm:view', { detail: name }));
+  }
+
+  // Used by the Gap Map: plan a trip from a point on the map.
+  function planFrom(place, toName) {
+    fromIn.value = pointLabel(place);
+    toIn.value = toName;
+    showView('plan');
+    plan();
+  }
+
+  /* ------------------------------------------------------------------
    * Wiring
    * ------------------------------------------------------------------ */
   function init() {
@@ -503,14 +535,24 @@
       plan();
     }));
 
+    document.querySelectorAll('.tabs [data-view]').forEach((b) => b.addEventListener('click', () => showView(b.dataset.view)));
+
     const params = new URLSearchParams(location.hash.slice(1));
     if (params.get('from') && params.get('to')) {
       fromIn.value = params.get('from');
       toIn.value = params.get('to');
       if (params.get('mile')) setMile(params.get('mile'));
+      showView('plan');
       plan();
+    } else {
+      showView(params.get('view') === 'plan' ? 'plan' : 'gap');
     }
   }
+
+  window.MetroMitra = {
+    fmtMin, fmtRs, fmtKm, fmtCo2, esc, showView, planFrom,
+    get view() { return view; }
+  };
 
   init();
 

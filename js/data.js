@@ -46,6 +46,20 @@
     'ramwadi':           ['Ramwadi',                    18.5530, 73.9110]
   };
 
+  // Station names in Marathi, so riders can search the way they read signboards.
+  // Please have a native speaker check these against station signage.
+  var STATIONS_MR = {
+    'pcmc': 'पीसीएमसी', 'sant-tukaram-nagar': 'संत तुकाराम नगर', 'bhosari': 'भोसरी (नाशिक फाटा)',
+    'kasarwadi': 'कासारवाडी', 'phugewadi': 'फुगेवाडी', 'dapodi': 'दापोडी', 'bopodi': 'बोपोडी',
+    'khadki': 'खडकी', 'range-hills': 'रेंज हिल्स', 'shivaji-nagar': 'शिवाजीनगर', 'civil-court': 'सिव्हिल कोर्ट',
+    'budhwar-peth': 'बुधवार पेठ', 'mandai': 'मंडई', 'swargate': 'स्वारगेट',
+    'vanaz': 'वनाझ', 'anand-nagar': 'आनंदनगर', 'ideal-colony': 'आयडियल कॉलनी', 'nal-stop': 'नळ स्टॉप',
+    'garware-college': 'गरवारे कॉलेज', 'deccan': 'डेक्कन जिमखाना', 'sambhaji-udyan': 'छत्रपती संभाजी उद्यान',
+    'pmc': 'पीएमसी', 'mangalwar-peth': 'मंगळवार पेठ', 'pune-station': 'पुणे रेल्वे स्थानक',
+    'ruby-hall': 'रुबी हॉल क्लिनिक', 'bund-garden': 'बंड गार्डन', 'yerawada': 'येरवडा',
+    'kalyani-nagar': 'कल्याणीनगर', 'ramwadi': 'रामवाडी'
+  };
+
   // Stations in running order. Shared ids are interchanges.
   var LINES = {
     purple: {
@@ -140,13 +154,30 @@
     cab:  { baseFare: 60, perKm: 15, waitMin: 6 },
 
     // Grams of CO2 per passenger-km.
-    co2: { metro: 15, auto: 70, cab: 150, walk: 0, cycle: 0 },
+    co2: { metro: 15, auto: 70, cab: 150, walk: 0, cycle: 0, feeder: 40 },
+
+    // A hypothetical feeder service (e-bus / shared e-rickshaw) used by the Gap Map
+    // simulator: flat fare, serves stops up to maxKm from its station.
+    feeder: { fare: 10, kmh: 16, waitMin: 6, maxKm: 6 },
+
+    // Gap Map grid: cell size in degrees (~0.9 km), how far from a station a cell
+    // may be and still be drawn, and the shortest trip worth considering.
+    gapMap: { minLat: 18.44, maxLat: 18.67, minLng: 73.72, maxLng: 73.97, step: 0.008,
+              maxStationKm: 9, minTripKm: 2.5 },
 
     // Pune's rough bounding box, used to reject far-away GPS fixes.
     bounds: { minLat: 18.40, maxLat: 18.72, minLng: 73.68, maxLng: 74.02 }
   };
 
-  var MetroData = { STATIONS: STATIONS, LINES: LINES, LANDMARKS: LANDMARKS, CONFIG: CONFIG };
+  // Where Pune travels to every day: jobs, colleges, transport hubs. Names refer
+  // to a station or a landmark above. The Gap Map measures access to these.
+  var HUBS = [
+    'Hinjewadi Phase 1', 'Kharadi (EON IT Park)', 'Magarpatta City', 'Bhosari MIDC',
+    'Pune Railway Station', 'Swargate', 'Pune Airport', 'Camp (MG Road)',
+    'Fergusson College', 'Savitribai Phule Pune University', 'COEP', 'MIT-WPU, Kothrud'
+  ];
+
+  var MetroData = { STATIONS: STATIONS, STATIONS_MR: STATIONS_MR, LINES: LINES, LANDMARKS: LANDMARKS, HUBS: HUBS, CONFIG: CONFIG };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = MetroData;
   else root.MetroData = MetroData;
