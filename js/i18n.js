@@ -386,6 +386,7 @@
                          'भाडे, वेळापत्रक व स्टेशन्स: महा-मेट्रो. रिक्षा भाडे: पुणे आरटीए. लोकसंख्या: WorldPop 2020. फीडर हे सिम्युलेशन आहे; रस्ते खर्च व उत्सर्जन हे अंदाज आहेत.'],
     'story.c6.code': ['Source code on GitHub', 'GitHub वर सोर्स कोड'],
     'story.replay': ['↑ Ride again', '↑ पुन्हा प्रवास करा'],
+    'video.link': ['🎬 Watch the walkthrough video', '🎬 ॲपची माहिती देणारा व्हिडिओ पाहा'],
     'story.link': ['▶ Ride the story: the pitch in 2 minutes', '▶ प्रवासातून गोष्ट: 2 मिनिटांत संपूर्ण कल्पना']
   };
 
